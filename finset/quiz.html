@@ -1899,6 +1899,7 @@ let attemptStartedAt = null;
 let questionStartedAt = 0;
 let answerLog = [];
 let attemptSaved = false;
+const PENDING_ATTEMPTS_KEY = 'sql_quiz_pending_attempts_v1';
 
 function escapeHTML(value) {
   return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -1977,6 +1978,46 @@ function recordAnswer(q, extra) {
     correct_answer: extra.correctAnswer || '',
     time_spent_ms: Math.max(0, Math.round(performance.now() - questionStartedAt))
   });
+}
+
+function loadPendingAttempts() {
+  try {
+    const raw = localStorage.getItem(PENDING_ATTEMPTS_KEY);
+    const data = raw ? JSON.parse(raw) : [];
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function savePendingAttempts(items) {
+  localStorage.setItem(PENDING_ATTEMPTS_KEY, JSON.stringify(items));
+}
+
+function enqueuePendingAttempt(payload) {
+  const items = loadPendingAttempts();
+  items.push(payload);
+  savePendingAttempts(items);
+}
+
+async function flushPendingAttempts() {
+  const pending = loadPendingAttempts();
+  if (!pending.length) return 0;
+  const remaining = [];
+  let sent = 0;
+  for (const payload of pending) {
+    try {
+      await apiJSON('/api/quiz/attempts', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      sent++;
+    } catch (error) {
+      remaining.push(payload);
+    }
+  }
+  savePendingAttempts(remaining);
+  return sent;
 }
 
 // ═══════════════════════════════════════════════════
@@ -2368,23 +2409,24 @@ function showResults() {
 
 async function saveAttempt() {
   if (attemptSaved || answerLog.length === 0 || !currentStudent.name) return;
+  const payload = {
+    student_name: currentStudent.name,
+    student_group: currentStudent.group,
+    difficulty_filter: selectedFilter,
+    started_at: attemptStartedAt ? attemptStartedAt.toISOString() : new Date().toISOString(),
+    finished_at: new Date().toISOString(),
+    answers: answerLog
+  };
   attemptSaved = true;
   try {
     const saved = await apiJSON('/api/quiz/attempts', {
       method: 'POST',
-      body: JSON.stringify({
-        student_name: currentStudent.name,
-        student_group: currentStudent.group,
-        difficulty_filter: selectedFilter,
-        started_at: attemptStartedAt ? attemptStartedAt.toISOString() : new Date().toISOString(),
-        finished_at: new Date().toISOString(),
-        answers: answerLog
-      })
+      body: JSON.stringify(payload)
     });
     setSaveStatus(`Нәтиже сақталды: ${saved.student_name} · ${saved.score_percent.toFixed(1)}%`, 'ok');
   } catch (error) {
-    attemptSaved = false;
-    setSaveStatus(`Сақтау қатесі: ${error.message}`, 'error');
+    enqueuePendingAttempt(payload);
+    setSaveStatus('Интернет/сервер қолжетімсіз. Нәтиже құрылғыда сақталды және кейін автоматты жіберіледі.', 'error');
   }
 }
 
@@ -2495,6 +2537,7 @@ async function loadDashboard() {
   document.getElementById('difficultyAnalytics').innerHTML = `<div class="dashboard-empty">Жүктелуде...</div>`;
   document.getElementById('topicAnalytics').innerHTML = `<div class="dashboard-empty">Жүктелуде...</div>`;
   try {
+    await flushPendingAttempts();
     const data = await apiJSON('/api/quiz/dashboard');
     renderDashboard(data);
   } catch (error) {
@@ -2544,6 +2587,7 @@ function goHome() {
 //  INIT
 // ═══════════════════════════════════════════════════
 initHome();
+flushPendingAttempts();
 </script>
 </body>
 </html>
