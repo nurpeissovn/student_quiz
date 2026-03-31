@@ -1900,6 +1900,8 @@ let questionStartedAt = 0;
 let answerLog = [];
 let attemptSaved = false;
 const PENDING_ATTEMPTS_KEY = 'sql_quiz_pending_attempts_v1';
+const TEACHER_DASHBOARD_PASSWORD = 'teacher123';
+let teacherBoardUnlocked = false;
 
 function escapeHTML(value) {
   return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -2548,6 +2550,15 @@ async function loadDashboard() {
 
 function openDashboard() {
   syncStudentForm();
+  if (!teacherBoardUnlocked) {
+    const entered = window.prompt('Мұғалім панелінің құпиясөзін енгізіңіз:');
+    if (entered === null) return;
+    if (entered !== TEACHER_DASHBOARD_PASSWORD) {
+      alert('Құпиясөз қате.');
+      return;
+    }
+    teacherBoardUnlocked = true;
+  }
   loadDashboard();
 }
 
