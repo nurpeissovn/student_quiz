@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/finset/app/internal/db"
@@ -14,11 +15,36 @@ import (
 )
 
 type Handler struct {
+	mu sync.RWMutex
 	DB *db.Pool
 }
 
 func New(d *db.Pool) *Handler {
 	return &Handler{DB: d}
+}
+
+func (h *Handler) SetDB(pool *db.Pool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.DB != nil && h.DB != pool {
+		h.DB.Close()
+	}
+	h.DB = pool
+}
+
+func (h *Handler) getDB() *db.Pool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return h.DB
+}
+
+func (h *Handler) requireDB(w http.ResponseWriter) *db.Pool {
+	pool := h.getDB()
+	if pool == nil {
+		writeError(w, http.StatusServiceUnavailable, "database is still starting")
+		return nil
+	}
+	return pool
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -38,7 +64,11 @@ func parseBody(r *http.Request, v any) error {
 }
 
 func (h *Handler) ListTransactions(w http.ResponseWriter, r *http.Request) {
-	txs, err := h.DB.ListTransactions(r.Context())
+	pool := h.requireDB(w)
+	if pool == nil {
+		return
+	}
+	txs, err := pool.ListTransactions(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to fetch transactions: "+err.Error())
 		return
@@ -47,8 +77,12 @@ func (h *Handler) ListTransactions(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetTransaction(w http.ResponseWriter, r *http.Request) {
+	pool := h.requireDB(w)
+	if pool == nil {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	tx, err := h.DB.GetTransaction(r.Context(), id)
+	tx, err := pool.GetTransaction(r.Context(), id)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "transaction not found: "+err.Error())
 		return
@@ -57,6 +91,10 @@ func (h *Handler) GetTransaction(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateTransaction(w http.ResponseWriter, r *http.Request) {
+	pool := h.requireDB(w)
+	if pool == nil {
+		return
+	}
 	var req models.CreateTransactionRequest
 	if err := parseBody(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
@@ -82,7 +120,7 @@ func (h *Handler) CreateTransaction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := uuid.New().String()
-	tx, err := h.DB.CreateTransaction(r.Context(), id, req)
+	tx, err := pool.CreateTransaction(r.Context(), id, req)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create transaction: "+err.Error())
 		return
@@ -91,7 +129,11 @@ func (h *Handler) CreateTransaction(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteAllTransactions(w http.ResponseWriter, r *http.Request) {
-	n, err := h.DB.DeleteAllTransactions(r.Context())
+	pool := h.requireDB(w)
+	if pool == nil {
+		return
+	}
+	n, err := pool.DeleteAllTransactions(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete all: "+err.Error())
 		return
@@ -100,8 +142,12 @@ func (h *Handler) DeleteAllTransactions(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *Handler) DeleteTransaction(w http.ResponseWriter, r *http.Request) {
+	pool := h.requireDB(w)
+	if pool == nil {
+		return
+	}
 	id := chi.URLParam(r, "id")
-	found, err := h.DB.DeleteTransaction(r.Context(), id)
+	found, err := pool.DeleteTransaction(r.Context(), id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete transaction: "+err.Error())
 		return
@@ -114,7 +160,11 @@ func (h *Handler) DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
-	stats, err := h.DB.GetStats(r.Context())
+	pool := h.requireDB(w)
+	if pool == nil {
+		return
+	}
+	stats, err := pool.GetStats(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to fetch stats: "+err.Error())
 		return
@@ -123,6 +173,10 @@ func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetMonthlyFlow(w http.ResponseWriter, r *http.Request) {
+	pool := h.requireDB(w)
+	if pool == nil {
+		return
+	}
 	months := 7
 	if m := r.URL.Query().Get("months"); m != "" {
 		var n int
@@ -130,7 +184,7 @@ func (h *Handler) GetMonthlyFlow(w http.ResponseWriter, r *http.Request) {
 			months = n
 		}
 	}
-	rows, err := h.DB.GetMonthlyFlow(r.Context(), months)
+	rows, err := pool.GetMonthlyFlow(r.Context(), months)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to fetch monthly flow: "+err.Error())
 		return
@@ -139,7 +193,11 @@ func (h *Handler) GetMonthlyFlow(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetCategoryBreakdown(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.DB.GetCategoryBreakdown(r.Context())
+	pool := h.requireDB(w)
+	if pool == nil {
+		return
+	}
+	rows, err := pool.GetCategoryBreakdown(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to fetch category breakdown: "+err.Error())
 		return
@@ -148,6 +206,10 @@ func (h *Handler) GetCategoryBreakdown(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ImportTransactions(w http.ResponseWriter, r *http.Request) {
+	pool := h.requireDB(w)
+	if pool == nil {
+		return
+	}
 	type importBody struct {
 		Transactions []models.Transaction `json:"transactions"`
 	}
@@ -168,7 +230,7 @@ func (h *Handler) ImportTransactions(w http.ResponseWriter, r *http.Request) {
 			body.Transactions[i].CreatedAt = time.Now()
 		}
 	}
-	inserted, err := h.DB.BulkInsert(r.Context(), body.Transactions)
+	inserted, err := pool.BulkInsert(r.Context(), body.Transactions)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "import failed: "+err.Error())
 		return
@@ -181,12 +243,16 @@ func (h *Handler) ImportTransactions(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Debug(w http.ResponseWriter, r *http.Request) {
+	pool := h.requireDB(w)
+	if pool == nil {
+		return
+	}
 	ctx := r.Context()
 	result := map[string]any{}
 
 	// Test basic query
 	var count int
-	err := h.DB.QueryRow(ctx, `SELECT COUNT(*) FROM transactions`).Scan(&count)
+	err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM transactions`).Scan(&count)
 	if err != nil {
 		result["count_error"] = err.Error()
 	} else {
@@ -195,7 +261,7 @@ func (h *Handler) Debug(w http.ResponseWriter, r *http.Request) {
 
 	// Test monthly flow query directly
 	cutoff := "2020-01-01"
-	rows, err := h.DB.Query(ctx, `
+	rows, err := pool.Query(ctx, `
 		SELECT
 			TO_CHAR(DATE_TRUNC('month', date), 'Mon') AS month,
 			TO_CHAR(DATE_TRUNC('month', date), 'YYYY') AS year,
@@ -230,9 +296,14 @@ func (h *Handler) Debug(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
-	if err := h.DB.Ping(r.Context()); err != nil {
-		writeError(w, http.StatusServiceUnavailable, "database unreachable: "+err.Error())
+	pool := h.getDB()
+	if pool == nil {
+		writeJSON(w, http.StatusOK, map[string]any{"status": "starting", "database_connected": false})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	if err := pool.Ping(r.Context()); err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"status": "degraded", "database_connected": false, "database_error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "database_connected": true})
 }
