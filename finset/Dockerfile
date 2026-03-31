@@ -20,7 +20,7 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 
 COPY --from=builder /finset /app/finset
-COPY --from=builder /app/derekter_qory_practice_v3\ \(1\).html /app/quiz.html
+COPY --from=builder /app/quiz.html /app/quiz.html
 
 ENV FRONTEND_HTML_PATH=/app/quiz.html
 

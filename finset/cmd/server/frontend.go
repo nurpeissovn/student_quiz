@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-const frontendFileName = "derekter_qory_practice_v3 (1).html"
+const frontendFileName = "quiz.html"
 
 func frontendCandidates() []string {
 	candidates := []string{}
