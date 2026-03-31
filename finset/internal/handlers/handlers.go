@@ -17,16 +17,10 @@ import (
 type Handler struct {
 	mu sync.RWMutex
 	DB *db.Pool
-
-	quizMu    sync.RWMutex
-	quizStore *memoryQuizStore
 }
 
 func New(d *db.Pool) *Handler {
-	return &Handler{
-		DB:        d,
-		quizStore: newMemoryQuizStore(),
-	}
+	return &Handler{DB: d}
 }
 
 func (h *Handler) SetDB(pool *db.Pool) {

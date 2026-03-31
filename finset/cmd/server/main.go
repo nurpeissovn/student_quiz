@@ -22,7 +22,16 @@ func main() {
 		port = "8080"
 	}
 
-	h := handlers.New(nil)
+	pool, err := db.Connect()
+	if err != nil {
+		log.Fatalf("database connection failed: %v", err)
+	}
+	if err := pool.Migrate(); err != nil {
+		pool.Close()
+		log.Fatalf("database migration failed: %v", err)
+	}
+
+	h := handlers.New(pool)
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -58,26 +67,6 @@ func main() {
 	r.Get("/*", func(w http.ResponseWriter, req *http.Request) {
 		serveFrontend(w, req)
 	})
-
-	go func() {
-		for {
-			pool, err := db.Connect()
-			if err != nil {
-				log.Printf("DB connection deferred: %v", err)
-				time.Sleep(5 * time.Second)
-				continue
-			}
-			if err := pool.Migrate(); err != nil {
-				log.Printf("DB migration deferred: %v", err)
-				pool.Close()
-				time.Sleep(5 * time.Second)
-				continue
-			}
-			h.SetDB(pool)
-			log.Printf("Database ready")
-			return
-		}
-	}()
 
 	log.Printf("FinSet listening on :%s", port)
 	if err := http.ListenAndServe(":"+port, r); err != nil {

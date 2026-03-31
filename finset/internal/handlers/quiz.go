@@ -8,6 +8,10 @@ import (
 )
 
 func (h *Handler) SubmitQuizAttempt(w http.ResponseWriter, r *http.Request) {
+	pool := h.requireDB(w)
+	if pool == nil {
+		return
+	}
 	var req models.SubmitQuizAttemptRequest
 	if err := parseBody(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
@@ -21,23 +25,17 @@ func (h *Handler) SubmitQuizAttempt(w http.ResponseWriter, r *http.Request) {
 
 	attemptID := uuid.New().String()
 	studentID := uuid.New().String()
-	pool := h.getDB()
-	if pool != nil {
-		saved, err := pool.SaveQuizAttempt(r.Context(), attemptID, studentID, req)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to save quiz attempt: "+err.Error())
-			return
-		}
-		writeJSON(w, http.StatusCreated, saved)
+	saved, err := pool.SaveQuizAttempt(r.Context(), attemptID, studentID, req)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to save quiz attempt: "+err.Error())
 		return
 	}
-	writeJSON(w, http.StatusCreated, h.saveQuizAttemptMemory(attemptID, studentID, req))
+	writeJSON(w, http.StatusCreated, saved)
 }
 
 func (h *Handler) GetQuizDashboard(w http.ResponseWriter, r *http.Request) {
-	pool := h.getDB()
+	pool := h.requireDB(w)
 	if pool == nil {
-		writeJSON(w, http.StatusOK, h.getQuizDashboardMemory())
 		return
 	}
 	dashboard, err := pool.GetQuizDashboard(r.Context())
