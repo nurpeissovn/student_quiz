@@ -1,0 +1,18 @@
+# Binaries
+finset
+*.exe
+
+# Environment (never commit real credentials)
+.env
+
+# Go build cache
+/vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
