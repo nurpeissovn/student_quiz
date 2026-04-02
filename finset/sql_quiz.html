@@ -14,6 +14,17 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--navy);font-family:'Nunito',sans-serif;color:var(--white);min-height:100vh}
 body{padding:0 0 80px}
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(6,182,212,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(6,182,212,0.03) 1px, transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;
+  z-index:0
+}
 
 /* TOP BAR */
 #topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,22,40,0.97);
@@ -149,16 +160,19 @@ body{padding:0 0 80px}
 #prev-btn:disabled,#next-btn:disabled{opacity:0.3;pointer-events:none}
 
 /* RESULT SCREEN */
-#result-screen{display:none;padding:88px 16px 100px;text-align:center}
-.result-circle{width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--violet));
-  display:flex;align-items:center;justify-content:center;margin:0 auto 24px;
-  font-size:36px;font-weight:900}
-.result-pct{font-size:52px;font-weight:900;background:linear-gradient(135deg,var(--cyan),var(--violet2));
+#result-screen{display:none;min-height:100vh;padding:40px 20px;text-align:center;align-items:center;justify-content:center;position:relative;z-index:1}
+.results-card{background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:28px;padding:42px 34px;max-width:640px;width:100%;position:relative;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.35)}
+.results-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--green))}
+.result-circle{width:auto;height:auto;border-radius:0;background:none;
+  display:block;margin:0 auto 16px;
+  font-size:64px;font-weight:900}
+.result-pct{font-size:72px;font-weight:900;line-height:1;background:linear-gradient(135deg,var(--cyan),var(--violet2));
   -webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.result-msg-big{font-size:20px;font-weight:800;color:var(--white);margin:8px 0}
-.result-sub{font-size:14px;color:var(--gray);margin-bottom:28px}
+.result-msg-big{font-size:30px;font-weight:900;color:var(--white);margin:10px 0 8px}
+.result-sub{font-size:15px;color:var(--gray);margin-bottom:28px;line-height:1.6}
+.score-label{font-size:14px;color:var(--gray);font-weight:700;margin:10px 0 24px;letter-spacing:1px;text-transform:uppercase}
 .result-breakdown{background:rgba(255,255,255,0.05);border:1px solid var(--border);
-  border-radius:18px;padding:18px;margin-bottom:20px;text-align:left}
+  border-radius:18px;padding:18px;margin-bottom:22px;text-align:left}
 .rb-row{display:flex;justify-content:space-between;align-items:center;
   padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px}
 .rb-row:last-child{border-bottom:none}
@@ -167,41 +181,56 @@ body{padding:0 0 80px}
 .rb-val.green{color:var(--green)}
 .rb-val.red{color:#fca5a5}
 .rb-val.orange{color:var(--orange)}
-.restart-btn{background:linear-gradient(135deg,var(--cyan),var(--violet));border:none;
-  color:white;padding:14px 32px;border-radius:15px;font-size:16px;font-weight:800;
-  cursor:pointer;width:100%;font-family:'Nunito',sans-serif}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.stat-box{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:16px;padding:16px 12px}
+.stat-num{font-size:30px;font-weight:900;margin-bottom:4px}
+.stat-label{font-size:11px;color:var(--gray);font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.result-btns{display:flex;gap:12px}
+.restart-btn,.home-btn{flex:1;padding:14px;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;border:2px solid}
+.restart-btn{background:linear-gradient(135deg,var(--cyan),var(--violet));border-color:transparent;color:#fff}
+.home-btn{background:transparent;border-color:var(--border);color:var(--white);text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
 .save-status{margin:14px 0 0;font-size:13px;font-weight:700;min-height:20px;color:var(--gray)}
 .save-status.ok{color:#6ee7b7}
 .save-status.error{color:#fca5a5}
 
 /* NAME SCREEN */
-#name-screen{padding:88px 16px 80px;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;min-height:100vh;gap:20px;text-align:center}
-.hero-title{font-size:28px;font-weight:900;color:var(--white);line-height:1.2}
-.hero-sub{font-size:14px;color:var(--gray);line-height:1.6;max-width:340px}
+#name-screen{padding:40px 20px 80px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;min-height:100vh;gap:0;text-align:center;position:relative;z-index:1}
+.home-glow{position:fixed;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle, rgba(6,182,212,0.08) 0%, transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+.home-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);border-radius:999px;padding:6px 18px;font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--cyan);margin-bottom:26px}
+.hero-title{font-size:clamp(36px,6vw,60px);font-weight:900;color:var(--white);line-height:1.05;letter-spacing:-1px}
+.hero-sub{font-size:15px;color:var(--gray);line-height:1.7;max-width:520px;margin:18px auto 34px}
 .name-input{background:#0d1f3c;border:1px solid rgba(6,182,212,0.3);border-radius:14px;
   color:var(--white);font-size:16px;padding:14px 18px;width:100%;max-width:340px;
   outline:none;font-family:'Nunito',sans-serif}
 .name-input:focus{border-color:var(--cyan)}
-.student-fields{display:flex;flex-direction:column;gap:10px;width:100%;max-width:340px}
-.start-btn{background:linear-gradient(135deg,var(--cyan),var(--violet));border:none;
-  color:white;padding:14px 32px;border-radius:15px;font-size:16px;font-weight:800;
-  cursor:pointer;width:100%;max-width:340px;font-family:'Nunito',sans-serif}
-.home-link{display:inline-flex;align-items:center;justify-content:center;width:100%;max-width:340px;
-  padding:13px 24px;border-radius:15px;border:1px solid var(--border);background:rgba(255,255,255,0.05);
+.home-panel{width:100%;max-width:780px;background:rgba(19,23,32,0.9);border:1px solid var(--border);border-radius:20px;padding:22px;margin:0 auto 24px;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.student-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%}
+.start-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,var(--cyan),var(--violet));border:none;
+  color:white;padding:16px 38px;border-radius:15px;font-size:16px;font-weight:800;
+  cursor:pointer;width:auto;max-width:none;font-family:'Nunito',sans-serif}
+.home-link{display:inline-flex;align-items:center;justify-content:center;padding:16px 24px;border-radius:15px;border:1px solid var(--border);background:rgba(255,255,255,0.05);
   color:var(--white);text-decoration:none;font-weight:800;font-size:15px}
-.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:340px}
-.info-card{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:14px;
+.home-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.info-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%;max-width:780px;margin:0 auto 28px}
+.info-card{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:16px;
   padding:14px;text-align:center}
 .info-val{font-size:22px;font-weight:900;color:var(--cyan)}
 .info-lbl{font-size:11px;color:var(--gray);margin-top:3px}
+@media (max-width:720px){
+  .student-fields{grid-template-columns:1fr}
+  .info-grid{grid-template-columns:repeat(2,1fr)}
+  .result-btns{flex-direction:column}
+  .stats-row{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
 
 <!-- NAME SCREEN -->
 <div id="name-screen">
-  <div style="font-size:48px;margin-bottom:4px">🧑‍💻</div>
+  <div class="home-glow"></div>
+  <div class="home-badge">🧑‍💻 SQL · 11-СЫНЫП · ТЕСТ</div>
   <h1 class="hero-title">SQL Тест<br><span style="background:linear-gradient(135deg,var(--cyan),var(--violet2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">11-сынып</span></h1>
   <p class="hero-sub">Деректер қоры бойынша білімді тексер. Нәтижеңді бірден көресің!</p>
   <div class="info-grid">
@@ -210,12 +239,16 @@ body{padding:0 0 80px}
     <div class="info-card"><div class="info-val">🟢🟡</div><div class="info-lbl">Деңгей</div></div>
     <div class="info-card"><div class="info-val">SQL</div><div class="info-lbl">Тақырып</div></div>
   </div>
-  <div class="student-fields">
-    <input class="name-input" id="student-name" placeholder="Оқушы аты-жөні" maxlength="60">
-    <input class="name-input" id="student-group" placeholder="Сынып / Топ" maxlength="40">
+  <div class="home-panel">
+    <div class="student-fields">
+      <input class="name-input" id="student-name" placeholder="Оқушы аты-жөні" maxlength="60">
+      <input class="name-input" id="student-group" placeholder="Сынып / Топ" maxlength="40">
+    </div>
   </div>
-  <button class="start-btn" onclick="startQuiz()">Бастау →</button>
-  <a class="home-link" href="/">← Негізгі бетке қайту</a>
+  <div class="home-actions">
+    <button class="start-btn" onclick="startQuiz()">Тесті Бастау →</button>
+    <a class="home-link" href="/">← Негізгі бет</a>
+  </div>
 </div>
 
 <!-- QUIZ AREA -->
@@ -236,25 +269,38 @@ body{padding:0 0 80px}
 
 <!-- RESULT SCREEN -->
 <div id="result-screen">
-  <div id="topbar">
-    <div id="topbar-row">
-      <span id="quiz-title2" style="font-size:14px;font-weight:800;color:var(--cyan)">Нәтиже</span>
+  <div class="results-card">
+    <div class="result-circle" id="result-emoji">🏆</div>
+    <div class="result-msg-big" id="result-msg">Тамаша!</div>
+    <div class="result-sub" id="result-sub">Нәтижеңіз есептелді</div>
+    <div class="result-pct" id="result-pct">0%</div>
+    <div class="score-label">ЖАЛПЫ НӘТИЖЕ · SQL ТЕСТ 11-СЫНЫП</div>
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-num" id="rb-correct" style="color:var(--green)">0</div>
+        <div class="stat-label">Дұрыс</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="rb-wrong" style="color:#fca5a5">0</div>
+        <div class="stat-label">Қате</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="rb-total" style="color:var(--cyan)">0</div>
+        <div class="stat-label">Барлығы</div>
+      </div>
     </div>
-    <div id="progress-bar-wrap"><div id="progress-fill2" style="height:4px;background:linear-gradient(90deg,var(--cyan),var(--violet));border-radius:4px;width:100%"></div></div>
+    <div class="result-breakdown">
+      <div class="rb-row"><span class="rb-label">Дұрыс жауап</span><span class="rb-val green" id="rb-correct-detail">0</span></div>
+      <div class="rb-row"><span class="rb-label">Қате жауап</span><span class="rb-val red" id="rb-wrong-detail">0</span></div>
+      <div class="rb-row"><span class="rb-label">Жауапталмады</span><span class="rb-val orange" id="rb-skip">0</span></div>
+      <div class="rb-row"><span class="rb-label">Барлық сұрақ</span><span class="rb-val" style="color:var(--cyan)" id="rb-total-detail">0</span></div>
+    </div>
+    <div class="save-status" id="save-status"></div>
+    <div class="result-btns">
+      <button class="restart-btn" onclick="restartQuiz()">↺ Қайта тапсыру</button>
+      <a class="home-btn" href="/">🏠 Басты бет</a>
+    </div>
   </div>
-  <div class="result-circle" id="result-emoji">🏆</div>
-  <div class="result-pct" id="result-pct">0%</div>
-  <div class="result-msg-big" id="result-msg">Тамаша!</div>
-  <div class="result-sub" id="result-sub">Нәтижеңіз есептелді</div>
-  <div class="result-breakdown">
-    <div class="rb-row"><span class="rb-label">Дұрыс жауап</span><span class="rb-val green" id="rb-correct">0</span></div>
-    <div class="rb-row"><span class="rb-label">Қате жауап</span><span class="rb-val red" id="rb-wrong">0</span></div>
-    <div class="rb-row"><span class="rb-label">Жауапталмады</span><span class="rb-val orange" id="rb-skip">0</span></div>
-    <div class="rb-row"><span class="rb-label">Барлық сұрақ</span><span class="rb-val" style="color:var(--cyan)" id="rb-total">0</span></div>
-  </div>
-  <div class="save-status" id="save-status"></div>
-  <button class="restart-btn" onclick="restartQuiz()">↺ Қайта тапсыру</button>
-  <a class="home-link" href="/" style="margin-top:12px">← Негізгі бетке қайту</a>
 </div>
 
 <script>
@@ -1055,8 +1101,11 @@ async function showResult(){
   document.getElementById('result-pct').textContent=pct+'%';
   document.getElementById('rb-correct').textContent=correct;
   document.getElementById('rb-wrong').textContent=wrong;
+  document.getElementById('rb-correct-detail').textContent=correct;
+  document.getElementById('rb-wrong-detail').textContent=wrong;
   document.getElementById('rb-skip').textContent=skip;
   document.getElementById('rb-total').textContent=total;
+  document.getElementById('rb-total-detail').textContent=total;
 
   let emoji,msg,sub;
   if(pct>=90){emoji='🏆';msg='Тамаша, '+studentName+'!';sub='Сен SQL маманысың! Керемет нәтиже.';}
