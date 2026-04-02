@@ -23,6 +23,7 @@ type SubmitQuizAttemptRequest struct {
 	StudentName      string            `json:"student_name"`
 	StudentGroup     string            `json:"student_group"`
 	DifficultyFilter string            `json:"difficulty_filter"`
+	TotalQuestions   int               `json:"total_questions"`
 	StartedAt        time.Time         `json:"started_at"`
 	FinishedAt       time.Time         `json:"finished_at"`
 	Answers          []QuizAnswerInput `json:"answers"`
@@ -54,6 +55,9 @@ func (r *SubmitQuizAttemptRequest) Normalize() {
 	if r.QuizTitle == "" {
 		r.QuizTitle = "SQL Практика"
 	}
+	if r.TotalQuestions < 0 {
+		r.TotalQuestions = 0
+	}
 }
 
 func (r SubmitQuizAttemptRequest) Validate() string {
@@ -68,6 +72,9 @@ func (r SubmitQuizAttemptRequest) Validate() string {
 	}
 	if len(r.Answers) == 0 {
 		return "at least one answer is required"
+	}
+	if r.TotalQuestions > 0 && r.TotalQuestions < len(r.Answers) {
+		return "total_questions cannot be smaller than answers length"
 	}
 	for _, a := range r.Answers {
 		if a.QuestionID == "" {

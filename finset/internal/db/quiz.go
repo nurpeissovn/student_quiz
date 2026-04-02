@@ -110,7 +110,10 @@ func (p *Pool) SaveQuizAttempt(ctx context.Context, attemptID, studentID string,
 		return nil, fmt.Errorf("upsert student: %w", err)
 	}
 
-	totalQuestions := len(req.Answers)
+	totalQuestions := req.TotalQuestions
+	if totalQuestions <= 0 {
+		totalQuestions = len(req.Answers)
+	}
 	correctCount := 0
 	score := 0
 	for _, answer := range req.Answers {
@@ -119,7 +122,10 @@ func (p *Pool) SaveQuizAttempt(ctx context.Context, attemptID, studentID string,
 			score += quizScoreForDifficulty(answer.Difficulty)
 		}
 	}
-	wrongCount := totalQuestions - correctCount
+	wrongCount := len(req.Answers) - correctCount
+	if wrongCount < 0 {
+		wrongCount = 0
+	}
 
 	startedAt := req.StartedAt
 	finishedAt := req.FinishedAt

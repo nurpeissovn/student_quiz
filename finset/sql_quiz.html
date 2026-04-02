@@ -183,6 +183,7 @@ body{padding:0 0 80px}
   color:var(--white);font-size:16px;padding:14px 18px;width:100%;max-width:340px;
   outline:none;font-family:'Nunito',sans-serif}
 .name-input:focus{border-color:var(--cyan)}
+.student-fields{display:flex;flex-direction:column;gap:10px;width:100%;max-width:340px}
 .start-btn{background:linear-gradient(135deg,var(--cyan),var(--violet));border:none;
   color:white;padding:14px 32px;border-radius:15px;font-size:16px;font-weight:800;
   cursor:pointer;width:100%;max-width:340px;font-family:'Nunito',sans-serif}
@@ -209,7 +210,10 @@ body{padding:0 0 80px}
     <div class="info-card"><div class="info-val">🟢🟡</div><div class="info-lbl">Деңгей</div></div>
     <div class="info-card"><div class="info-val">SQL</div><div class="info-lbl">Тақырып</div></div>
   </div>
-  <input class="name-input" id="student-name" placeholder="Атың кім? (міндетті емес)" maxlength="40">
+  <div class="student-fields">
+    <input class="name-input" id="student-name" placeholder="Оқушы аты-жөні" maxlength="60">
+    <input class="name-input" id="student-group" placeholder="Сынып / Топ" maxlength="40">
+  </div>
   <button class="start-btn" onclick="startQuiz()">Бастау →</button>
   <a class="home-link" href="/">← Негізгі бетке қайту</a>
 </div>
@@ -636,14 +640,23 @@ const QUESTIONS = [
 // ===================== STATE =====================
 const QUIZ_KEY='sql-grade-11';
 const QUIZ_TITLE='SQL Тест 11-сынып';
+const PENDING_ATTEMPTS_KEY='sql_grade_11_pending_attempts_v1';
 let current=0;
 let answers={};
 let studentName='';
+let studentGroup='';
 let attemptStartedAt=null;
 let attemptSaved=false;
 
 function startQuiz(){
-  studentName=document.getElementById('student-name').value.trim()||'Оқушы';
+  const enteredName=document.getElementById('student-name').value.trim();
+  if(!enteredName){
+    alert('Алдымен оқушының аты-жөнін жазыңыз.');
+    document.getElementById('student-name').focus();
+    return;
+  }
+  studentName=enteredName;
+  studentGroup=document.getElementById('student-group').value.trim();
   attemptStartedAt=new Date();
   attemptSaved=false;
   setSaveStatus('');
@@ -676,6 +689,46 @@ function setSaveStatus(message, tone='') {
   el.textContent=message;
 }
 
+function loadPendingAttempts(){
+  try{
+    const raw=localStorage.getItem(PENDING_ATTEMPTS_KEY);
+    const data=raw?JSON.parse(raw):[];
+    return Array.isArray(data)?data:[];
+  }catch(error){
+    return [];
+  }
+}
+
+function savePendingAttempts(items){
+  localStorage.setItem(PENDING_ATTEMPTS_KEY,JSON.stringify(items));
+}
+
+function enqueuePendingAttempt(payload){
+  const items=loadPendingAttempts();
+  items.push(payload);
+  savePendingAttempts(items);
+}
+
+async function flushPendingAttempts(){
+  const pending=loadPendingAttempts();
+  if(!pending.length)return 0;
+  const remaining=[];
+  let sent=0;
+  for(const payload of pending){
+    try{
+      await apiJSON('/api/quiz/attempts',{
+        method:'POST',
+        body:JSON.stringify(payload)
+      });
+      sent++;
+    }catch(error){
+      remaining.push(payload);
+    }
+  }
+  savePendingAttempts(remaining);
+  return sent;
+}
+
 function questionDifficulty(q){
   return q.diff||'easy';
 }
@@ -705,19 +758,20 @@ function answerSelectedValue(q,answer){
 }
 
 function buildAnswerLog(){
-  return QUESTIONS.map((q,i)=>{
+  return QUESTIONS.flatMap((q,i)=>{
     const answer=answers[i];
-    return {
+    if(!(answer&&answer.locked))return [];
+    return [{
       question_id:`${QUIZ_KEY}-q${i+1}`,
       topic_index:0,
       topic_name:questionTopicName(q),
       difficulty:questionDifficulty(q),
       question_type:q.type,
-      is_correct:!!(answer&&answer.locked&&answer.correct),
+      is_correct:!!answer.correct,
       selected_answer:answerSelectedValue(q,answer),
       correct_answer:answerCorrectValue(q),
       time_spent_ms:0
-    };
+    }];
   });
 }
 
@@ -728,9 +782,10 @@ async function saveAttempt(){
   const payload={
     quiz_key:QUIZ_KEY,
     quiz_title:QUIZ_TITLE,
-    student_name:studentName||'Оқушы',
-    student_group:'',
+    student_name:studentName,
+    student_group:studentGroup,
     difficulty_filter:'all',
+    total_questions:QUESTIONS.length,
     started_at:(attemptStartedAt||new Date()).toISOString(),
     finished_at:new Date().toISOString(),
     answers:buildAnswerLog()
@@ -743,7 +798,8 @@ async function saveAttempt(){
     setSaveStatus(`Нәтиже сақталды: ${saved.student_name} · ${saved.score_percent.toFixed(1)}%`,'ok');
   }catch(error){
     attemptSaved=false;
-    setSaveStatus(error.message||'Нәтиже сақталмады.','error');
+    enqueuePendingAttempt(payload);
+    setSaveStatus('Интернет/сервер қолжетімсіз. Нәтиже құрылғыда сақталды және кейін автоматты жіберіледі.','error');
   }
 }
 
@@ -1006,13 +1062,15 @@ function showResult(){
   document.getElementById('result-emoji').textContent=emoji;
   document.getElementById('result-msg').textContent=msg;
   document.getElementById('result-sub').textContent=sub;
-  saveAttempt();
+  flushPendingAttempts().finally(() => saveAttempt());
   window.scrollTo(0,0);
 }
 
 function restartQuiz(){
   answers={};
   current=0;
+  studentName=document.getElementById('student-name').value.trim();
+  studentGroup=document.getElementById('student-group').value.trim();
   attemptStartedAt=new Date();
   attemptSaved=false;
   setSaveStatus('');
