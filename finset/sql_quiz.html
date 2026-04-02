@@ -640,13 +640,14 @@ const QUESTIONS = [
 // ===================== STATE =====================
 const QUIZ_KEY='sql-grade-11';
 const QUIZ_TITLE='SQL Тест 11-сынып';
-const PENDING_ATTEMPTS_KEY='sql_grade_11_pending_attempts_v1';
+const PENDING_ATTEMPTS_KEY='sql_quiz_pending_attempts_v1';
 let current=0;
 let answers={};
 let studentName='';
 let studentGroup='';
 let attemptStartedAt=null;
 let attemptSaved=false;
+let savingAttempt=false;
 
 function startQuiz(){
   const enteredName=document.getElementById('student-name').value.trim();
@@ -718,7 +719,8 @@ async function flushPendingAttempts(){
     try{
       await apiJSON('/api/quiz/attempts',{
         method:'POST',
-        body:JSON.stringify(payload)
+        body:JSON.stringify(payload),
+        keepalive:true
       });
       sent++;
     }catch(error){
@@ -776,7 +778,8 @@ function buildAnswerLog(){
 }
 
 async function saveAttempt(){
-  if(attemptSaved)return;
+  if(attemptSaved||savingAttempt)return;
+  savingAttempt=true;
   attemptSaved=true;
   setSaveStatus('Нәтиже сақталуда...');
   const payload={
@@ -793,13 +796,16 @@ async function saveAttempt(){
   try{
     const saved=await apiJSON('/api/quiz/attempts',{
       method:'POST',
-      body:JSON.stringify(payload)
+      body:JSON.stringify(payload),
+      keepalive:true
     });
     setSaveStatus(`Нәтиже сақталды: ${saved.student_name} · ${saved.score_percent.toFixed(1)}%`,'ok');
   }catch(error){
     attemptSaved=false;
     enqueuePendingAttempt(payload);
     setSaveStatus('Интернет/сервер қолжетімсіз. Нәтиже құрылғыда сақталды және кейін автоматты жіберіледі.','error');
+  }finally{
+    savingAttempt=false;
   }
 }
 
@@ -1034,7 +1040,7 @@ function updateScore(){
 }
 
 // ===================== RESULT =====================
-function showResult(){
+async function showResult(){
   document.getElementById('quiz-area').style.display='none';
   const rs=document.getElementById('result-screen');
   rs.style.display='block';
@@ -1062,7 +1068,8 @@ function showResult(){
   document.getElementById('result-emoji').textContent=emoji;
   document.getElementById('result-msg').textContent=msg;
   document.getElementById('result-sub').textContent=sub;
-  flushPendingAttempts().finally(() => saveAttempt());
+  await flushPendingAttempts();
+  await saveAttempt();
   window.scrollTo(0,0);
 }
 
@@ -1073,6 +1080,7 @@ function restartQuiz(){
   studentGroup=document.getElementById('student-group').value.trim();
   attemptStartedAt=new Date();
   attemptSaved=false;
+  savingAttempt=false;
   setSaveStatus('');
   document.getElementById('result-screen').style.display='none';
   document.getElementById('quiz-area').style.display='block';
@@ -1080,6 +1088,10 @@ function restartQuiz(){
   goTo(0);
   updateScore();
 }
+
+window.addEventListener('pageshow', () => {
+  flushPendingAttempts().catch(() => {});
+});
 </script>
 </body>
 </html>
