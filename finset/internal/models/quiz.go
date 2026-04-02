@@ -18,6 +18,8 @@ type QuizAnswerInput struct {
 }
 
 type SubmitQuizAttemptRequest struct {
+	QuizKey          string            `json:"quiz_key"`
+	QuizTitle        string            `json:"quiz_title"`
 	StudentName      string            `json:"student_name"`
 	StudentGroup     string            `json:"student_group"`
 	DifficultyFilter string            `json:"difficulty_filter"`
@@ -27,6 +29,8 @@ type SubmitQuizAttemptRequest struct {
 }
 
 func (r *SubmitQuizAttemptRequest) Normalize() {
+	r.QuizKey = strings.ToLower(strings.TrimSpace(r.QuizKey))
+	r.QuizTitle = strings.TrimSpace(r.QuizTitle)
 	r.StudentName = strings.TrimSpace(r.StudentName)
 	r.StudentGroup = strings.TrimSpace(r.StudentGroup)
 	r.DifficultyFilter = strings.ToLower(strings.TrimSpace(r.DifficultyFilter))
@@ -44,9 +48,21 @@ func (r *SubmitQuizAttemptRequest) Normalize() {
 	if r.DifficultyFilter == "" {
 		r.DifficultyFilter = "all"
 	}
+	if r.QuizKey == "" {
+		r.QuizKey = "sql-practice"
+	}
+	if r.QuizTitle == "" {
+		r.QuizTitle = "SQL Практика"
+	}
 }
 
 func (r SubmitQuizAttemptRequest) Validate() string {
+	if r.QuizKey == "" {
+		return "quiz_key is required"
+	}
+	if r.QuizTitle == "" {
+		return "quiz_title is required"
+	}
 	if r.StudentName == "" {
 		return "student_name is required"
 	}
@@ -64,6 +80,8 @@ func (r SubmitQuizAttemptRequest) Validate() string {
 type SavedQuizAttempt struct {
 	AttemptID        string    `json:"attempt_id"`
 	StudentID        string    `json:"student_id"`
+	QuizKey          string    `json:"quiz_key"`
+	QuizTitle        string    `json:"quiz_title"`
 	StudentName      string    `json:"student_name"`
 	StudentGroup     string    `json:"student_group"`
 	DifficultyFilter string    `json:"difficulty_filter"`
@@ -103,6 +121,8 @@ type TopicDashboardRow struct {
 type RecentAttemptRow struct {
 	AttemptID        string    `json:"attempt_id"`
 	StudentID        string    `json:"student_id"`
+	QuizKey          string    `json:"quiz_key"`
+	QuizTitle        string    `json:"quiz_title"`
 	StudentName      string    `json:"student_name"`
 	StudentGroup     string    `json:"student_group"`
 	DifficultyFilter string    `json:"difficulty_filter"`

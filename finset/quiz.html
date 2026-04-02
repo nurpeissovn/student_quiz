@@ -246,6 +246,28 @@ body::before {
   justify-content: center;
 }
 
+.secondary-quiz-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 24px;
+  border-radius: 14px;
+  border: 1px solid rgba(124,58,237,0.35);
+  background: rgba(124,58,237,0.12);
+  color: #c4b5fd;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.secondary-quiz-link:hover {
+  transform: translateY(-2px);
+  background: rgba(124,58,237,0.18);
+}
+
 .dashboard-link-btn {
   display: inline-flex;
   align-items: center;
@@ -1266,6 +1288,7 @@ body::before {
       Практиканы Бастау
       <span class="arrow">→</span>
     </button>
+    <a class="secondary-quiz-link" href="/sql-quiz">🧑‍💻 SQL Тест 11-сынып</a>
     <button class="dashboard-link-btn" onclick="openDashboard()">📊 Мұғалім панелі</button>
   </div>
 
@@ -1901,6 +1924,8 @@ let answerLog = [];
 let attemptSaved = false;
 const PENDING_ATTEMPTS_KEY = 'sql_quiz_pending_attempts_v1';
 const TEACHER_DASHBOARD_PASSWORD = 'teacher123';
+const QUIZ_KEY = 'sql-practice';
+const QUIZ_TITLE = 'SQL Практика';
 let teacherBoardUnlocked = false;
 
 function escapeHTML(value) {
@@ -2412,6 +2437,8 @@ function showResults() {
 async function saveAttempt() {
   if (attemptSaved || answerLog.length === 0 || !currentStudent.name) return;
   const payload = {
+    quiz_key: QUIZ_KEY,
+    quiz_title: QUIZ_TITLE,
     student_name: currentStudent.name,
     student_group: currentStudent.group,
     difficulty_filter: selectedFilter,
@@ -2508,7 +2535,10 @@ function renderDashboard(data) {
             <div class="student-name">${escapeHTML(row.student_name)}</div>
             <div class="student-group">${escapeHTML(row.student_group || '')}</div>
           </td>
-          <td>${difficultyLabel(row.difficulty_filter)}</td>
+          <td>
+            <div class="student-name">${escapeHTML(row.quiz_title || 'SQL Практика')}</div>
+            <div class="student-group">${difficultyLabel(row.difficulty_filter)}</div>
+          </td>
           <td>${row.score_percent.toFixed(1)}%</td>
           <td>${row.correct_count}/${row.total_questions}</td>
           <td>${formatDateTime(row.finished_at)}</td>

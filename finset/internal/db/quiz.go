@@ -26,6 +26,8 @@ func (p *Pool) migrateQuiz(ctx context.Context) error {
 		CREATE TABLE IF NOT EXISTS quiz_attempts (
 			id                TEXT PRIMARY KEY,
 			student_id        TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+			quiz_key          TEXT NOT NULL DEFAULT 'sql-practice',
+			quiz_title        TEXT NOT NULL DEFAULT 'SQL Практика',
 			student_name      TEXT NOT NULL,
 			student_group     TEXT NOT NULL DEFAULT '',
 			difficulty_filter TEXT NOT NULL DEFAULT 'all',
@@ -57,6 +59,8 @@ func (p *Pool) migrateQuiz(ctx context.Context) error {
 			UNIQUE (attempt_id, question_id)
 		)
 		`,
+		`ALTER TABLE quiz_attempts ADD COLUMN IF NOT EXISTS quiz_key TEXT NOT NULL DEFAULT 'sql-practice'`,
+		`ALTER TABLE quiz_attempts ADD COLUMN IF NOT EXISTS quiz_title TEXT NOT NULL DEFAULT 'SQL Практика'`,
 		`CREATE INDEX IF NOT EXISTS idx_quiz_attempts_student_finished ON quiz_attempts (student_id, finished_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_quiz_attempts_finished ON quiz_attempts (finished_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_quiz_answers_difficulty ON quiz_attempt_answers (difficulty)`,
@@ -137,12 +141,12 @@ func (p *Pool) SaveQuizAttempt(ctx context.Context, attemptID, studentID string,
 
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO quiz_attempts (
-			id, student_id, student_name, student_group, difficulty_filter,
-			total_questions, correct_count, wrong_count, score, score_percent,
-			duration_ms, started_at, finished_at
+			id, student_id, quiz_key, quiz_title, student_name, student_group,
+			difficulty_filter, total_questions, correct_count, wrong_count, score,
+			score_percent, duration_ms, started_at, finished_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-	`, attemptID, studentID, req.StudentName, req.StudentGroup, req.DifficultyFilter,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+	`, attemptID, studentID, req.QuizKey, req.QuizTitle, req.StudentName, req.StudentGroup, req.DifficultyFilter,
 		totalQuestions, correctCount, wrongCount, score, scorePercent,
 		durationMS, startedAt, finishedAt); err != nil {
 		return nil, fmt.Errorf("insert attempt: %w", err)
@@ -168,6 +172,8 @@ func (p *Pool) SaveQuizAttempt(ctx context.Context, attemptID, studentID string,
 	return &models.SavedQuizAttempt{
 		AttemptID:        attemptID,
 		StudentID:        studentID,
+		QuizKey:          req.QuizKey,
+		QuizTitle:        req.QuizTitle,
 		StudentName:      req.StudentName,
 		StudentGroup:     req.StudentGroup,
 		DifficultyFilter: req.DifficultyFilter,
@@ -325,6 +331,8 @@ func (p *Pool) GetQuizDashboard(ctx context.Context) (*models.QuizDashboard, err
 		SELECT
 			id,
 			student_id,
+			quiz_key,
+			quiz_title,
 			student_name,
 			student_group,
 			difficulty_filter,
@@ -342,7 +350,7 @@ func (p *Pool) GetQuizDashboard(ctx context.Context) (*models.QuizDashboard, err
 	defer recentRows.Close()
 	for recentRows.Next() {
 		var row models.RecentAttemptRow
-		if err := recentRows.Scan(&row.AttemptID, &row.StudentID, &row.StudentName, &row.StudentGroup, &row.DifficultyFilter, &row.ScorePercent, &row.CorrectCount, &row.TotalQuestions, &row.FinishedAt); err != nil {
+		if err := recentRows.Scan(&row.AttemptID, &row.StudentID, &row.QuizKey, &row.QuizTitle, &row.StudentName, &row.StudentGroup, &row.DifficultyFilter, &row.ScorePercent, &row.CorrectCount, &row.TotalQuestions, &row.FinishedAt); err != nil {
 			return nil, fmt.Errorf("scan recent attempts: %w", err)
 		}
 		dashboard.RecentAttempts = append(dashboard.RecentAttempts, row)

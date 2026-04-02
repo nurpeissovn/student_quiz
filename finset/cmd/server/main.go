@@ -63,6 +63,10 @@ func main() {
 		r.Get("/quiz/dashboard", h.GetQuizDashboard)
 	})
 
+	r.Get("/sql-quiz", func(w http.ResponseWriter, req *http.Request) {
+		serveSQLQuizFrontend(w, req)
+	})
+
 	// Serve frontend — all non-API routes return index.html
 	r.Get("/*", func(w http.ResponseWriter, req *http.Request) {
 		serveFrontend(w, req)

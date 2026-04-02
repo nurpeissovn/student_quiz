@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>SQL Тест — 11-сынып</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#0a1628;--navy2:#0f2044;--blue:#1a56db;--cyan:#06b6d4;--violet:#7c3aed;
+  --violet2:#a78bfa;--green:#10b981;--red:#ef4444;--orange:#f59e0b;--white:#ffffff;
+  --gray:#94a3b8;--border:rgba(255,255,255,0.12);--card:rgba(255,255,255,0.07);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--navy);font-family:'Nunito',sans-serif;color:var(--white);min-height:100vh}
+body{padding:0 0 80px}
+
+/* TOP BAR */
+#topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,22,40,0.97);
+  backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:10px 16px;
+  display:flex;flex-direction:column;gap:6px}
+#topbar-row{display:flex;align-items:center;justify-content:space-between}
+#quiz-title{font-size:14px;font-weight:800;color:var(--cyan)}
+#score-badge{background:rgba(6,182,212,0.15);border:1px solid rgba(6,182,212,0.3);
+  color:var(--cyan);font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px}
+#progress-bar-wrap{height:4px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--violet));
+  border-radius:4px;transition:width 0.4s ease;width:0%}
+
+/* MAIN */
+#main{padding:88px 16px 20px}
+
+/* QUESTION CARD */
+.q-card{background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:20px;
+  padding:20px 16px;margin-bottom:16px;display:none}
+.q-card.active{display:block}
+.q-num{font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--cyan);margin-bottom:8px}
+.q-type-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;
+  border-radius:10px;margin-bottom:10px;letter-spacing:0.5px}
+.badge-mc{background:rgba(26,86,219,0.2);color:#93c5fd;border:1px solid rgba(26,86,219,0.3)}
+.badge-tf{background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(16,185,129,0.25)}
+.badge-match{background:rgba(124,58,237,0.2);color:var(--violet2);border:1px solid rgba(124,58,237,0.3)}
+.badge-code{background:rgba(245,158,11,0.15);color:#fcd34d;border:1px solid rgba(245,158,11,0.25)}
+.badge-fill{background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.25)}
+.q-text{font-size:15px;font-weight:700;color:var(--white);line-height:1.55;margin-bottom:16px}
+.q-sub{font-size:13px;color:rgba(255,255,255,0.6);margin-top:-10px;margin-bottom:14px;line-height:1.5}
+
+/* CODE SNIPPET in question */
+.q-code{background:#0d1f3c;border:1px solid rgba(6,182,212,0.25);border-radius:12px;
+  padding:12px 14px;font-family:'JetBrains Mono',monospace;font-size:12.5px;
+  color:#e2e8f0;line-height:1.8;margin-bottom:14px;overflow-x:auto;white-space:pre}
+.kw{color:#67e8f9}.str{color:#a5f3fc}.col{color:#c084fc}.tbl{color:#86efac}.num{color:#fbbf24}
+
+/* TABLE in question */
+.q-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px}
+.q-table th{background:rgba(26,86,219,0.3);color:var(--white);padding:7px 10px;
+  text-align:left;font-weight:700;border-bottom:1px solid rgba(6,182,212,0.3)}
+.q-table td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.85)}
+
+/* MULTIPLE CHOICE */
+.mc-options{display:flex;flex-direction:column;gap:9px}
+.mc-opt{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:13px;
+  padding:12px 14px;font-size:14px;font-weight:600;color:rgba(255,255,255,0.85);
+  cursor:pointer;transition:all 0.2s;text-align:left;width:100%;display:flex;align-items:center;gap:10px}
+.mc-opt:active{transform:scale(0.98)}
+.mc-opt .opt-key{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,0.08);
+  border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:800;flex-shrink:0;font-family:'JetBrains Mono',monospace}
+.mc-opt.selected{background:rgba(26,86,219,0.2);border-color:rgba(26,86,219,0.5)}
+.mc-opt.correct{background:rgba(16,185,129,0.2)!important;border-color:var(--green)!important;color:#6ee7b7!important}
+.mc-opt.correct .opt-key{background:var(--green);border-color:var(--green);color:#000}
+.mc-opt.wrong{background:rgba(239,68,68,0.15)!important;border-color:var(--red)!important;color:#fca5a5!important}
+.mc-opt.wrong .opt-key{background:var(--red);border-color:var(--red);color:#fff}
+.mc-opt.disabled{cursor:not-allowed;pointer-events:none}
+
+/* TRUE/FALSE */
+.tf-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tf-btn{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:14px;
+  padding:14px;font-size:15px;font-weight:800;cursor:pointer;transition:all 0.2s;color:var(--white)}
+.tf-btn:active{transform:scale(0.97)}
+.tf-btn.selected{background:rgba(26,86,219,0.2);border-color:rgba(26,86,219,0.5)}
+.tf-btn.correct{background:rgba(16,185,129,0.2)!important;border-color:var(--green)!important;color:#6ee7b7!important}
+.tf-btn.wrong{background:rgba(239,68,68,0.15)!important;border-color:var(--red)!important;color:#fca5a5!important}
+.tf-btn.disabled{pointer-events:none}
+
+/* MATCHING */
+.match-area{display:flex;flex-direction:column;gap:8px}
+.match-row{display:flex;align-items:center;gap:8px}
+.match-left{background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);
+  border-radius:10px;padding:8px 12px;font-family:'JetBrains Mono',monospace;
+  font-size:12px;font-weight:700;color:var(--violet2);flex:1;min-width:0}
+.match-arrow{color:var(--gray);font-size:14px;flex-shrink:0}
+.match-select{background:#0d1f3c;border:1px solid rgba(6,182,212,0.3);border-radius:10px;
+  color:#e2e8f0;font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 10px;
+  flex:1;min-width:0;outline:none;-webkit-appearance:none}
+.match-select:focus{border-color:var(--cyan)}
+.match-select.correct{border-color:var(--green)!important;background:rgba(16,185,129,0.1)!important}
+.match-select.wrong{border-color:var(--red)!important;background:rgba(239,68,68,0.1)!important}
+.match-select:disabled{pointer-events:none}
+.match-check-btn{background:linear-gradient(135deg,var(--cyan),var(--blue));border:none;
+  color:white;padding:10px 20px;border-radius:12px;font-size:14px;font-weight:800;
+  cursor:pointer;margin-top:8px;width:100%;font-family:'Nunito',sans-serif}
+
+/* CODING */
+.code-editor{background:#060f1e;border:1px solid rgba(6,182,212,0.25);border-radius:14px;
+  padding:4px;margin-bottom:10px}
+.code-textarea{background:transparent;border:none;color:#e2e8f0;font-family:'JetBrains Mono',monospace;
+  font-size:13px;padding:10px 12px;width:100%;resize:none;outline:none;line-height:1.7;
+  min-height:80px}
+.code-run-btn{background:linear-gradient(135deg,var(--cyan),var(--blue));border:none;
+  color:white;padding:10px 20px;border-radius:11px;font-size:14px;font-weight:800;
+  cursor:pointer;width:100%;font-family:'Nunito',sans-serif;margin-bottom:8px}
+.code-result{background:#060f1e;border:1px solid rgba(255,255,255,0.08);border-radius:12px;
+  padding:12px;min-height:60px}
+.result-label{font-size:10px;font-weight:800;color:var(--gray);letter-spacing:1px;
+  text-transform:uppercase;margin-bottom:8px}
+.result-msg{color:var(--gray);font-size:13px;font-style:italic;text-align:center;padding:10px 0}
+.result-msg.success{color:var(--green)}
+.result-msg.error{color:var(--red)}
+
+/* FILL BLANK */
+.fill-wrap{display:flex;flex-direction:column;gap:8px}
+.fill-input{background:#0d1f3c;border:1px solid rgba(6,182,212,0.3);border-radius:11px;
+  color:#e2e8f0;font-family:'JetBrains Mono',monospace;font-size:14px;padding:11px 14px;
+  width:100%;outline:none}
+.fill-input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(6,182,212,0.1)}
+.fill-input.correct{border-color:var(--green)!important;background:rgba(16,185,129,0.1)}
+.fill-input.wrong{border-color:var(--red)!important;background:rgba(239,68,68,0.07)}
+.fill-check-btn{background:linear-gradient(135deg,var(--cyan),var(--blue));border:none;
+  color:white;padding:10px 20px;border-radius:12px;font-size:14px;font-weight:800;
+  cursor:pointer;font-family:'Nunito',sans-serif}
+
+/* FEEDBACK */
+.feedback{margin-top:12px;padding:11px 14px;border-radius:12px;font-size:13px;
+  font-weight:700;line-height:1.5;display:none}
+.feedback.show{display:block}
+.feedback.correct{background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#6ee7b7}
+.feedback.wrong{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#fca5a5}
+
+/* NAV */
+#nav-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(10,22,40,0.97);
+  backdrop-filter:blur(20px);border-top:1px solid var(--border);
+  padding:12px 16px;display:flex;gap:10px}
+#prev-btn,#next-btn{flex:1;padding:12px;border-radius:13px;font-size:15px;font-weight:800;
+  cursor:pointer;font-family:'Nunito',sans-serif;border:1px solid var(--border);
+  background:rgba(255,255,255,0.07);color:var(--white);transition:all 0.2s}
+#next-btn{background:linear-gradient(135deg,var(--cyan),var(--blue));border-color:transparent}
+#prev-btn:disabled,#next-btn:disabled{opacity:0.3;pointer-events:none}
+
+/* RESULT SCREEN */
+#result-screen{display:none;padding:88px 16px 100px;text-align:center}
+.result-circle{width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,var(--cyan),var(--violet));
+  display:flex;align-items:center;justify-content:center;margin:0 auto 24px;
+  font-size:36px;font-weight:900}
+.result-pct{font-size:52px;font-weight:900;background:linear-gradient(135deg,var(--cyan),var(--violet2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.result-msg-big{font-size:20px;font-weight:800;color:var(--white);margin:8px 0}
+.result-sub{font-size:14px;color:var(--gray);margin-bottom:28px}
+.result-breakdown{background:rgba(255,255,255,0.05);border:1px solid var(--border);
+  border-radius:18px;padding:18px;margin-bottom:20px;text-align:left}
+.rb-row{display:flex;justify-content:space-between;align-items:center;
+  padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px}
+.rb-row:last-child{border-bottom:none}
+.rb-label{color:rgba(255,255,255,0.7);font-weight:600}
+.rb-val{font-weight:800;font-family:'JetBrains Mono',monospace}
+.rb-val.green{color:var(--green)}
+.rb-val.red{color:#fca5a5}
+.rb-val.orange{color:var(--orange)}
+.restart-btn{background:linear-gradient(135deg,var(--cyan),var(--violet));border:none;
+  color:white;padding:14px 32px;border-radius:15px;font-size:16px;font-weight:800;
+  cursor:pointer;width:100%;font-family:'Nunito',sans-serif}
+.save-status{margin:14px 0 0;font-size:13px;font-weight:700;min-height:20px;color:var(--gray)}
+.save-status.ok{color:#6ee7b7}
+.save-status.error{color:#fca5a5}
+
+/* NAME SCREEN */
+#name-screen{padding:88px 16px 80px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;min-height:100vh;gap:20px;text-align:center}
+.hero-title{font-size:28px;font-weight:900;color:var(--white);line-height:1.2}
+.hero-sub{font-size:14px;color:var(--gray);line-height:1.6;max-width:340px}
+.name-input{background:#0d1f3c;border:1px solid rgba(6,182,212,0.3);border-radius:14px;
+  color:var(--white);font-size:16px;padding:14px 18px;width:100%;max-width:340px;
+  outline:none;font-family:'Nunito',sans-serif}
+.name-input:focus{border-color:var(--cyan)}
+.start-btn{background:linear-gradient(135deg,var(--cyan),var(--violet));border:none;
+  color:white;padding:14px 32px;border-radius:15px;font-size:16px;font-weight:800;
+  cursor:pointer;width:100%;max-width:340px;font-family:'Nunito',sans-serif}
+.home-link{display:inline-flex;align-items:center;justify-content:center;width:100%;max-width:340px;
+  padding:13px 24px;border-radius:15px;border:1px solid var(--border);background:rgba(255,255,255,0.05);
+  color:var(--white);text-decoration:none;font-weight:800;font-size:15px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:340px}
+.info-card{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:14px;
+  padding:14px;text-align:center}
+.info-val{font-size:22px;font-weight:900;color:var(--cyan)}
+.info-lbl{font-size:11px;color:var(--gray);margin-top:3px}
+</style>
+</head>
+<body>
+
+<!-- NAME SCREEN -->
+<div id="name-screen">
+  <div style="font-size:48px;margin-bottom:4px">🧑‍💻</div>
+  <h1 class="hero-title">SQL Тест<br><span style="background:linear-gradient(135deg,var(--cyan),var(--violet2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">11-сынып</span></h1>
+  <p class="hero-sub">Деректер қоры бойынша білімді тексер. Нәтижеңді бірден көресің!</p>
+  <div class="info-grid">
+    <div class="info-card"><div class="info-val">32</div><div class="info-lbl">Сұрақ</div></div>
+    <div class="info-card"><div class="info-val">4</div><div class="info-lbl">Тип</div></div>
+    <div class="info-card"><div class="info-val">🟢🟡</div><div class="info-lbl">Деңгей</div></div>
+    <div class="info-card"><div class="info-val">SQL</div><div class="info-lbl">Тақырып</div></div>
+  </div>
+  <input class="name-input" id="student-name" placeholder="Атың кім? (міндетті емес)" maxlength="40">
+  <button class="start-btn" onclick="startQuiz()">Бастау →</button>
+  <a class="home-link" href="/">← Негізгі бетке қайту</a>
+</div>
+
+<!-- QUIZ AREA -->
+<div id="quiz-area" style="display:none">
+  <div id="topbar">
+    <div id="topbar-row">
+      <span id="quiz-title">SQL Тест</span>
+      <span id="score-badge">0 / 0</span>
+    </div>
+    <div id="progress-bar-wrap"><div id="progress-fill"></div></div>
+  </div>
+  <div id="main"></div>
+  <div id="nav-bar">
+    <button id="prev-btn" onclick="goSlide(-1)">← Артқа</button>
+    <button id="next-btn" onclick="goSlide(1)">Алға →</button>
+  </div>
+</div>
+
+<!-- RESULT SCREEN -->
+<div id="result-screen">
+  <div id="topbar">
+    <div id="topbar-row">
+      <span id="quiz-title2" style="font-size:14px;font-weight:800;color:var(--cyan)">Нәтиже</span>
+    </div>
+    <div id="progress-bar-wrap"><div id="progress-fill2" style="height:4px;background:linear-gradient(90deg,var(--cyan),var(--violet));border-radius:4px;width:100%"></div></div>
+  </div>
+  <div class="result-circle" id="result-emoji">🏆</div>
+  <div class="result-pct" id="result-pct">0%</div>
+  <div class="result-msg-big" id="result-msg">Тамаша!</div>
+  <div class="result-sub" id="result-sub">Нәтижеңіз есептелді</div>
+  <div class="result-breakdown">
+    <div class="rb-row"><span class="rb-label">Дұрыс жауап</span><span class="rb-val green" id="rb-correct">0</span></div>
+    <div class="rb-row"><span class="rb-label">Қате жауап</span><span class="rb-val red" id="rb-wrong">0</span></div>
+    <div class="rb-row"><span class="rb-label">Жауапталмады</span><span class="rb-val orange" id="rb-skip">0</span></div>
+    <div class="rb-row"><span class="rb-label">Барлық сұрақ</span><span class="rb-val" style="color:var(--cyan)" id="rb-total">0</span></div>
+  </div>
+  <div class="save-status" id="save-status"></div>
+  <button class="restart-btn" onclick="restartQuiz()">↺ Қайта тапсыру</button>
+  <a class="home-link" href="/" style="margin-top:12px">← Негізгі бетке қайту</a>
+</div>
+
+<script>
+// ===================== DATA =====================
+const DB = {
+  Students: [
+    {id:1,name:'Алтынай',surname:'Сембекова',age:18},
+    {id:2,name:'Арман',surname:'Жақсылық',age:17},
+    {id:3,name:'Мырзабек',surname:'Сагелдиев',age:18},
+    {id:4,name:'Мадияр',surname:'Мырзабекұлы',age:16},
+  ],
+  Students2:[
+    {id:1,name:'Ақжігіт',surname:'Тұрсынбек',data:2004,address:'Қызылтөбе',number:'87774526558',book:'физика'},
+    {id:2,name:'Жұмаш',surname:'Құралбай',data:2004,address:'Шымкент',number:'87754589815',book:'биология'},
+    {id:3,name:'Айжан',surname:'Тілес',data:2003,address:'Түркістан',number:'87472541202',book:'информатика'},
+    {id:4,name:'Думан',surname:'Табынай',data:2004,address:'Түркістан',number:'87751020402',book:'физика'},
+    {id:5,name:'Мерей',surname:'Ізберген',data:2003,address:'Алматы',number:'87006581402',book:'география'},
+  ],
+  Subjects:[
+    {id:1,student_id:1,subject:'Математика',grade:95},
+    {id:2,student_id:1,subject:'Информатика',grade:88},
+    {id:3,student_id:2,subject:'Физика',grade:76},
+    {id:4,student_id:3,subject:'Биология',grade:91},
+    {id:5,student_id:4,subject:'Химия',grade:82},
+    {id:6,student_id:2,subject:'Математика',grade:85},
+  ]
+};
+
+// ===================== SQL ENGINE =====================
+function evalCond(row,cond){
+  try{
+    const likeM=cond.match(/(\w+)\s+LIKE\s+'([^']+)'/i);
+    if(likeM){const[,col,pat]=likeM;const rx=new RegExp('^'+pat.replace(/%/g,'.*').replace(/_/g,'.')+'$','i');return rx.test(String(row[col]||''));}
+    const inM=cond.match(/(\w+)\s+IN\s*\(([^)]+)\)/i);
+    if(inM){const vals=inM[2].split(',').map(v=>v.trim().replace(/^['"]|['"]$/g,''));return vals.includes(String(row[inM[1]]));}
+    const bM=cond.match(/(\w+)\s*(=|!=|<>|>=|<=|>|<)\s*'?([^';\s]*)'?/);
+    if(bM){const[,col,op,val]=bM;const rv=row[col];const cv=isNaN(val)?val:Number(val);const rv2=typeof rv==='number'?rv:(isNaN(rv)?rv:Number(rv));
+      if(op==='=')return rv2==cv||String(rv)==String(val);
+      if(op==='!='||op==='<>')return rv2!=cv;
+      if(op==='>') return rv2>cv;if(op==='<') return rv2<cv;
+      if(op==='>=')return rv2>=cv;if(op==='<=')return rv2<=cv;}
+    return false;
+  }catch(e){return false;}
+}
+
+function prefixRow(row,tbl){const o={};Object.keys(row).forEach(k=>{o[tbl+'.'+k]=row[k];o[k]=row[k];});return o;}
+function nullRow(sample,tbl){const o={};Object.keys(sample).forEach(k=>{o[tbl+'.'+k]=null;o[k]=null;});return o;}
+
+function runSQL(query,db){
+  const q=query.trim().replace(/\s+/g,' ');
+  if(/^DELETE\s+FROM\s+/i.test(q)){
+    const m=q.match(/^DELETE\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?;?$/i);
+    if(!m)return{error:'Синтаксис қатесі'};
+    const tbl=m[1],cond=m[2];
+    if(!db[tbl])return{error:`Кесте жоқ: ${tbl}`};
+    const before=JSON.parse(JSON.stringify(db[tbl]));
+    db[tbl]=cond?db[tbl].filter(r=>!evalCond(r,cond)):[];
+    const deleted=before.filter(r=>!db[tbl].find(x=>x.id===r.id));
+    return{type:'delete',before,after:db[tbl],deleted};
+  }
+  if(/^UPDATE\s+/i.test(q)){
+    const m=q.match(/^UPDATE\s+(\w+)\s+SET\s+(.+?)\s+WHERE\s+(.+?);?$/i);
+    if(!m)return{error:'Синтаксис қатесі'};
+    const[,tbl,sets,cond]=m;
+    if(!db[tbl])return{error:`Кесте жоқ: ${tbl}`};
+    const setPairs=sets.split(',').map(s=>{const[k,v]=s.split('=').map(x=>x.trim());const val=v.replace(/^['"]|['"]$/g,'');return{k,val:isNaN(val)?val:Number(val)};});
+    const updated=[];
+    db[tbl]=db[tbl].map(row=>{if(evalCond(row,cond)){const nr={...row};setPairs.forEach(({k,val})=>{nr[k]=val;});updated.push(nr.id);return nr;}return row;});
+    return{type:'update',after:db[tbl],updated};
+  }
+  const m=q.match(/^SELECT\s+([\s\S]+?)\s+FROM\s+(\w+)(?:\s+(?:INNER JOIN|LEFT JOIN|RIGHT JOIN|JOIN)\s+(\w+)\s+ON\s+([\s\S]+?))?(?:\s+WHERE\s+([\s\S]+?))?(?:\s+ORDER BY\s+([\s\S]+?))?;?$/i);
+  if(!m)return{error:'SELECT ... FROM ... форматын қолдан'};
+  const[,cols,tbl1,tbl2,onClause,where,orderBy]=m;
+  if(!db[tbl1])return{error:`Кесте жоқ: ${tbl1}`};
+  let rows;
+  if(tbl2){
+    if(!db[tbl2])return{error:`Кесте жоқ: ${tbl2}`};
+    const joinType=q.match(/(INNER JOIN|LEFT JOIN|RIGHT JOIN)/i)?.[1]?.toUpperCase()||'INNER JOIN';
+    const onM=onClause.match(/(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)/i);
+    if(!onM)return{error:'ON шарты қате'};
+    const[,t1,c1,t2,c2]=onM;rows=[];
+    const L=db[tbl1],R=db[tbl2];
+    if(joinType==='INNER JOIN')L.forEach(l=>R.forEach(r=>{if(l[c1]==r[c2])rows.push({...prefixRow(l,tbl1),...prefixRow(r,tbl2)});}));
+    else if(joinType==='LEFT JOIN')L.forEach(l=>{const ms=R.filter(r=>l[c1]==r[c2]);if(ms.length)ms.forEach(r=>rows.push({...prefixRow(l,tbl1),...prefixRow(r,tbl2)}));else rows.push({...prefixRow(l,tbl1),...nullRow(R[0]||{},tbl2)});});
+    else R.forEach(r=>{const ms=L.filter(l=>l[c1]==r[c2]);if(ms.length)ms.forEach(l=>rows.push({...prefixRow(l,tbl1),...prefixRow(r,tbl2)}));else rows.push({...nullRow(L[0]||{},tbl1),...prefixRow(r,tbl2)});});
+  }else{rows=JSON.parse(JSON.stringify(db[tbl1]));}
+  if(where){
+    const subM=where.match(/(\w+)\s+IN\s*\(SELECT\s+(\w+)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+?))?\)/i);
+    if(subM){const[,col,scol,stbl,swhere]=subM;if(!db[stbl])return{error:`Кесте жоқ: ${stbl}`};let sr=JSON.parse(JSON.stringify(db[stbl]));if(swhere)sr=sr.filter(r=>evalCond(r,swhere));const vals=sr.map(r=>r[scol]);rows=rows.filter(r=>vals.includes(r[col]));}
+    else rows=rows.filter(r=>evalCond(r,where));
+  }
+  if(orderBy){const parts=orderBy.trim().split(/\s+/);const col=parts[0].includes('.')?parts[0].split('.')[1]:parts[0];const dir=(parts[1]||'ASC').toUpperCase();rows.sort((a,b)=>{const av=a[col]??a[Object.keys(a).find(k=>k.endsWith(col))];const bv=b[col]??b[Object.keys(b).find(k=>k.endsWith(col))];if(av<bv)return dir==='ASC'?-1:1;if(av>bv)return dir==='ASC'?1:-1;return 0;});}
+  let finalRows;
+  if(cols.trim()==='*'){finalRows=rows.map(r=>{const c={};Object.keys(r).forEach(k=>{c[k.includes('.')?k.split('.').pop():k]=r[k];});return c;});}
+  else{const colList=cols.split(',').map(c=>c.trim());finalRows=rows.map(r=>{const o={};colList.forEach(c=>{const key=c.includes('.')?c.split('.').pop():c;o[key]=r[c]??r[key]??r[Object.keys(r).find(k=>k===c||k.endsWith('.'+c))]??null;});return o;});}
+  return{type:'select',rows:finalRows};
+}
+
+function renderTable(rows){
+  if(!rows||rows.length===0)return'<p class="result-msg">Нәтиже жоқ</p>';
+  const cols=Object.keys(rows[0]);
+  let h='<div style="overflow-x:auto"><table class="q-table"><thead><tr>';
+  cols.forEach(c=>h+=`<th>${c}</th>`);
+  h+='</tr></thead><tbody>';
+  rows.forEach(r=>{h+='<tr>';cols.forEach(c=>h+=`<td>${r[c]!=null?r[c]:'<span style="color:#64748b;font-style:italic">NULL</span>'}</td>`);h+='</tr>';});
+  h+='</tbody></table></div>';
+  return h;
+}
+
+// ===================== QUESTIONS =====================
+const QUESTIONS = [
+  // ---- MULTIPLE CHOICE (MC) ----
+  {
+    type:'mc', diff:'easy',
+    q:'SELECT командасы не үшін қолданылады?',
+    opts:['Кестені жою үшін','Деректерді таңдау үшін','Жаңа кесте жасау үшін','Деректерді өзгерту үшін'],
+    ans:1, exp:'SELECT — кестеден деректерді таңдайды (алып оқиды).'
+  },
+  {
+    type:'mc', diff:'easy',
+    q:'Кестенің барлық бағандарын шығаратын команда қандай?',
+    opts:['SELECT name','SELECT ALL','SELECT *','SELECT id'],
+    ans:2, exp:'* (жұлдызша) — барлық бағандарды шығарады дегенді білдіреді.'
+  },
+  {
+    type:'mc', diff:'easy',
+    q:'FROM кілттік сөзі не үшін қолданылады?',
+    opts:['Шарт қою үшін','Нәтижені сұрыптау үшін','Деректер қай кестеден алынатынын анықтайды','Жолды жою үшін'],
+    ans:2, exp:'FROM — деректер қай кестеден алынатынын көрсетеді. SELECT * FROM Students.'
+  },
+  {
+    type:'mc', diff:'easy',
+    q:'WHERE шарты не істейді?',
+    opts:['Нәтижені сұрыптайды','Кестені біріктіреді','Шартқа сай жолдарды ғана сүзеді','Барлық жолды жояды'],
+    ans:2, exp:'WHERE — шартқа сай жолдарды ғана таңдайды. Мысалы: WHERE age=18'
+  },
+  {
+    type:'mc', diff:'easy',
+    q:'ORDER BY ASC нені білдіреді?',
+    opts:['Кему реті (18→16)','Өсу реті (16→18)','Кездейсоқ реті','Алфавит бойынша кему'],
+    ans:1, exp:'ASC (Ascending) = өсу реті: ең кіші мәннен ең үлкенге қарай.'
+  },
+  {
+    type:'mc', diff:'easy',
+    q:'Students кестесінде барлығының жасын шығару үшін:',
+    opts:['SELECT age WHERE Students;','SELECT age FROM Students;','FROM Students SELECT age;','GET age FROM Students;'],
+    ans:1, exp:'Дұрыс синтаксис: SELECT баған FROM кесте;'
+  },
+  {
+    type:'mc', diff:'easy',
+    q:'SQL-де жолды жою командасы қайсы?',
+    opts:['REMOVE','ERASE','DELETE','DROP'],
+    ans:2, exp:'DELETE FROM кесте WHERE шарт; — жолдарды жояды.'
+  },
+  {
+    type:'mc', diff:'easy',
+    q:'SQL-де нүктелі үтір (;) не үшін қолданылады?',
+    opts:['Комментарий жазу үшін','Сұраныстың аяқталғанын белгілеу үшін','Баған атауын бөлу үшін','Ештеңе үшін емес'],
+    ans:1, exp:'; — сұраныстың соңын белгілейді. Дәстүрлі ереже.'
+  },
+  {
+    type:'mc', diff:'medium',
+    q:'Қандай SQL сұраныс жасы 18-ге тең оқушылардың тегін шығарады?',
+    opts:[
+      'SELECT surname FROM Students WHERE age=18;',
+      'SELECT age FROM Students WHERE surname=18;',
+      'SELECT * WHERE age=18;',
+      'FROM Students SELECT surname age=18;'
+    ],
+    ans:0, exp:'Дұрыс: SELECT surname FROM Students WHERE age=18;'
+  },
+  {
+    type:'mc', diff:'medium',
+    q:'UPDATE командасы нені істейді?',
+    opts:['Жаңа жол қосады','Бар деректерді өзгертеді','Кестені жояды','Кестені жасайды'],
+    ans:1, exp:'UPDATE кесте SET баған=мән WHERE шарт; — бар деректерді жаңартады.'
+  },
+  {
+    type:'mc', diff:'medium',
+    q:'LIKE операторында % символы нені білдіреді?',
+    opts:['Тек бір таңба','Тек сандар','Кез келген ұзындықтағы таңбалар','Бос орын ғана'],
+    ans:2, exp:'% — кез келген ұзындықтағы (нөлдік немесе одан көп) таңбалар орнына жұмыс істейді.'
+  },
+  {
+    type:'mc', diff:'medium',
+    q:'INNER JOIN нені қайтарады?',
+    opts:['Тек сол жақ кестенің барлық жолдарын','Тек оң жақ кестенің барлық жолдарын','Тек екі кестеде де сәйкес келетін жолдарды','Барлық жолдарды (NULL-мен толтырып)'],
+    ans:2, exp:'INNER JOIN — тек екі кестеде де сәйкесті бар жолдарды береді.'
+  },
+  {
+    type:'mc', diff:'medium',
+    q:'Primary Key туралы не дұрыс?',
+    opts:['Null болуы мүмкін','Қайталануы мүмкін','Әр жолды бірегей анықтайды','Тек мәтіндік болады'],
+    ans:2, exp:'Primary Key — кестедегі әр жолды бірегей (уникальды) анықтайтын өріс.'
+  },
+  {
+    type:'mc', diff:'medium',
+    q:'LEFT JOIN нені қайтарады?',
+    opts:['Тек сәйкес жолдарды','Оң жақ кестенің барлығын + сәйкес сол жақ жолдарды','Сол жақ кестенің барлығын + сәйкес оң жақ жолдарды','Тек NULL жолдарды'],
+    ans:2, exp:'LEFT JOIN — сол жақ кестенің БАРЛЫҚ жолдарын + сәйкес оң жақ жолдарды қайтарады. Сәйкессіз жолдарда NULL болады.'
+  },
+  {
+    type:'mc', diff:'medium',
+    q:'1:K (Бірден-көпке) байланысына мысал қайсы?',
+    opts:['Оқушы — Жеке куәлік','Мұғалім — Оқушылар','Оқушы — Пән (аралық кестемен)','Кесте — Баған'],
+    ans:1, exp:'1:K: Бір мұғалімнің көп оқушысы болуы мүмкін. Бір оқушының тек бір мұғалімі (сол пән бойынша).'
+  },
+
+  // ---- TRUE / FALSE (TF) ----
+  {
+    type:'tf', diff:'easy',
+    q:'SELECT * FROM Students; — бұл сұраныс Students кестесінің БАРЛЫҚ жолдары мен бағандарын шығарады.',
+    ans:true, exp:'Дұрыс. * барлық бағандарды, WHERE жоқ болса — барлық жолдарды шығарады.'
+  },
+  {
+    type:'tf', diff:'easy',
+    q:'DELETE командасынан кейін жойылған деректерді қалпына келтіруге болады.',
+    ans:false, exp:'Қате. DELETE — деректерді мүлде жояды, қалпына келтіру мүмкін емес (ROLLBACK болмаса).'
+  },
+  {
+    type:'tf', diff:'easy',
+    q:'WHERE шарты ORDER BY-дан кейін жазылады.',
+    ans:false, exp:'Қате. Дұрыс тәртіп: SELECT → FROM → WHERE → ORDER BY. WHERE ORDER BY-дан БҰРЫН жазылады.'
+  },
+  {
+    type:'tf', diff:'medium',
+    q:"WHERE name LIKE 'А%'; — бұл шарт аты А әрпінен басталатын барлық жолдарды таңдайды.",
+    ans:true, exp:"Дұрыс. 'А%' — А-дан басталатын, одан кейін кез келген таңба келетін мәтін."
+  },
+  {
+    type:'tf', diff:'medium',
+    q:'Foreign Key — бұл өз кестесінің Primary Key-іне сілтейді.',
+    ans:false, exp:'Қате. Foreign Key — БАСҚА кестенің Primary Key-іне сілтейді. Осылай кестелер арасындағы байланыс жасалады.'
+  },
+  {
+    type:'tf', diff:'medium',
+    q:'DELETE FROM Students; — WHERE шартысыз — кестенің барлық жолдарын жояды.',
+    ans:true, exp:'Дұрыс! WHERE болмаса DELETE барлық жолды жояды. Өте қауіпті!'
+  },
+
+  // ---- MATCHING ----
+  {
+    type:'match', diff:'easy',
+    q:'SQL командаларын олардың мақсатымен сәйкестір:',
+    pairs:[
+      {left:'SELECT',right:'Деректерді таңдайды'},
+      {left:'DELETE',right:'Жолды жояды'},
+      {left:'UPDATE',right:'Деректерді өзгертеді'},
+      {left:'ORDER BY',right:'Нәтижені сұрыптайды'},
+    ],
+    exp:'SELECT=таңдау, DELETE=жою, UPDATE=өзгерту, ORDER BY=сұрыптау.'
+  },
+  {
+    type:'match', diff:'medium',
+    q:'JOIN түрлерін олардың сипаттамасымен сәйкестір:',
+    pairs:[
+      {left:'INNER JOIN',right:'Тек сәйкес жолдар'},
+      {left:'LEFT JOIN',right:'Сол жақ кестенің барлығы'},
+      {left:'RIGHT JOIN',right:'Оң жақ кестенің барлығы'},
+    ],
+    exp:'INNER JOIN=екі кестеде бар, LEFT JOIN=сол жақтың барлығы, RIGHT JOIN=оң жақтың барлығы.'
+  },
+  {
+    type:'match', diff:'medium',
+    q:'Байланыс түрлерін мысалдармен сәйкестір:',
+    pairs:[
+      {left:'1:1',right:'Оқушы ↔ Жеке куәлік'},
+      {left:'1:K',right:'Мұғалім → Оқушылар'},
+      {left:'K:K',right:'Оқушылар ↔ Пәндер'},
+    ],
+    exp:'1:1=бірге-бір, 1:K=бірден-көпке, K:K=көптен-көпке (аралық кесте керек).'
+  },
+
+  // ---- FILL IN THE BLANK ----
+  {
+    type:'fill', diff:'easy',
+    q:'Төмендегі сұраныстың бос жерін толтыр:',
+    code:'SELECT * ___ Students;',
+    hint:'Мәліметті қай кестеден алатынымызды көрсететін кілттік сөз',
+    ans:['FROM'], exp:'FROM — деректер қай кестеден алынатынын анықтайды.'
+  },
+  {
+    type:'fill', diff:'easy',
+    q:'Жасы 18-ге тең жолдарды сүзу үшін бос жерді толтыр:',
+    code:"SELECT * FROM Students ___ age=18;",
+    hint:'Шарт қоятын кілттік сөз',
+    ans:['WHERE'], exp:'WHERE — шартқа сай жолдарды ғана таңдайды.'
+  },
+  {
+    type:'fill', diff:'medium',
+    q:'Нәтижені жасы бойынша өсу ретімен сұрыптау үшін:',
+    code:'SELECT * FROM Students ORDER BY age ___;',
+    hint:'Өсу реті (Ascending)',
+    ans:['ASC'], exp:'ASC — өсу реті (кіші мәннен үлкенге). DESC — кему реті.'
+  },
+  {
+    type:'fill', diff:'medium',
+    q:'Жолды жою командасындағы бос жерді толтыр:',
+    code:"DELETE ___ Students WHERE id=2;",
+    hint:'DELETE-тен кейін міндетті кілттік сөз',
+    ans:['FROM'], exp:'DELETE FROM кесте WHERE шарт; — жолды жояды.'
+  },
+
+  // ---- CODING ----
+  {
+    type:'code', diff:'easy',
+    q:"Students кестесінен барлық оқушылардың тегін (surname) шығаратын SQL жаз.",
+    hint:'SELECT [баған] FROM [кесте];',
+    check:(result,db)=>{
+      if(result.error)return{ok:false,msg:'❌ '+result.error};
+      if(result.type!=='select')return{ok:false,msg:'❌ SELECT сұранысы керек'};
+      const rows=result.rows;
+      if(!rows.length)return{ok:false,msg:'❌ Нәтиже бос'};
+      const keys=Object.keys(rows[0]);
+      if(!keys.includes('surname'))return{ok:false,msg:'❌ surname бағаны жоқ нәтижеде'};
+      if(keys.length>1)return{ok:false,msg:'⚠️ Тек surname бағаны керек болатын'};
+      return{ok:true,msg:'✅ Дұрыс! '+rows.length+' жол шықты.'};
+    },
+    solution:'SELECT surname FROM Students;'
+  },
+  {
+    type:'code', diff:'easy',
+    q:"Students кестесінен жасы 18-ге тең оқушылардың атын (name) шығар.",
+    hint:'WHERE age=18 шартын қолдан',
+    check:(result,db)=>{
+      if(result.error)return{ok:false,msg:'❌ '+result.error};
+      if(result.type!=='select')return{ok:false,msg:'❌ SELECT сұранысы керек'};
+      const rows=result.rows;
+      if(!rows.some(r=>r.name))return{ok:false,msg:'❌ name бағаны жоқ'};
+      if(rows.length!==2)return{ok:false,msg:`❌ 2 оқушы болу керек, ${rows.length} шықты`};
+      return{ok:true,msg:'✅ Дұрыс! Жасы 18-дегі 2 оқушы шықты.'};
+    },
+    solution:'SELECT name FROM Students WHERE age=18;'
+  },
+  {
+    type:'code', diff:'medium',
+    q:"Students кестесін жасы бойынша КЕМУ ретімен сұрыптап, барлық деректерді шығар.",
+    hint:'ORDER BY ... DESC қолдан',
+    check:(result,db)=>{
+      if(result.error)return{ok:false,msg:'❌ '+result.error};
+      if(result.type!=='select')return{ok:false,msg:'❌ SELECT керек'};
+      const rows=result.rows;
+      if(rows.length!==4)return{ok:false,msg:'❌ Барлық 4 оқушы керек'};
+      for(let i=0;i<rows.length-1;i++){if((rows[i].age||0)<(rows[i+1].age||0))return{ok:false,msg:'❌ Кему реті (DESC) дұрыс емес'};}
+      return{ok:true,msg:'✅ Тамаша! Кему реті дұрыс: '+rows.map(r=>r.age).join(' → ')};
+    },
+    solution:'SELECT * FROM Students ORDER BY age DESC;'
+  },
+  {
+    type:'code', diff:'medium',
+    q:"Students мен Subjects кестелерін INNER JOIN арқылы біріктіріп, оқушы аты мен пән атын шығар.",
+    hint:'Students INNER JOIN Subjects ON Students.id=Subjects.student_id',
+    check:(result,db)=>{
+      if(result.error)return{ok:false,msg:'❌ '+result.error};
+      if(result.type!=='select')return{ok:false,msg:'❌ SELECT керек'};
+      const rows=result.rows;
+      if(rows.length<3)return{ok:false,msg:'❌ Кем дегенде 3 жол болу керек'};
+      const hasName=rows.some(r=>r.name||r['Students.name']);
+      const hasSubject=rows.some(r=>r.subject||r['Subjects.subject']);
+      if(!hasName)return{ok:false,msg:'❌ name бағаны жоқ'};
+      if(!hasSubject)return{ok:false,msg:'❌ subject бағаны жоқ'};
+      return{ok:true,msg:'✅ Керемет! '+rows.length+' жол шықты — JOIN дұрыс жұмыс істеді.'};
+    },
+    solution:'SELECT Students.name, Subjects.subject FROM Students INNER JOIN Subjects ON Students.id=Subjects.student_id;'
+  },
+  {
+    type:'code', diff:'medium',
+    q:"Students2 кестесінен аты 'А' әрпінен басталатын оқушыларды тап.",
+    hint:"LIKE 'А%' қолдан",
+    check:(result,db)=>{
+      if(result.error)return{ok:false,msg:'❌ '+result.error};
+      if(result.type!=='select')return{ok:false,msg:'❌ SELECT керек'};
+      const rows=result.rows;
+      if(!rows.length)return{ok:false,msg:'❌ Нәтиже бос'};
+      const badRow=rows.find(r=>r.name&&!r.name.startsWith('А'));
+      if(badRow)return{ok:false,msg:'❌ А-дан басталмайтын: '+badRow.name};
+      return{ok:true,msg:'✅ Дұрыс! '+rows.length+' оқушы табылды.'};
+    },
+    solution:"SELECT * FROM Students2 WHERE name LIKE 'А%';"
+  },
+];
+
+// ===================== STATE =====================
+const QUIZ_KEY='sql-grade-11';
+const QUIZ_TITLE='SQL Тест 11-сынып';
+let current=0;
+let answers={};
+let studentName='';
+let attemptStartedAt=null;
+let attemptSaved=false;
+
+function startQuiz(){
+  studentName=document.getElementById('student-name').value.trim()||'Оқушы';
+  attemptStartedAt=new Date();
+  attemptSaved=false;
+  setSaveStatus('');
+  document.getElementById('name-screen').style.display='none';
+  document.getElementById('quiz-area').style.display='block';
+  buildAll();
+  goTo(0);
+}
+
+async function apiJSON(url, options = {}) {
+  const response = await fetch(url, {
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options
+  });
+  if (!response.ok) {
+    let message = 'Сұраныс сәтсіз аяқталды';
+    try {
+      const data = await response.json();
+      if (data && data.error) message = data.error;
+    } catch (err) {}
+    throw new Error(message);
+  }
+  return response.json();
+}
+
+function setSaveStatus(message, tone='') {
+  const el=document.getElementById('save-status');
+  if(!el)return;
+  el.className='save-status'+(tone?' '+tone:'');
+  el.textContent=message;
+}
+
+function questionDifficulty(q){
+  return q.diff||'easy';
+}
+
+function questionTopicName(q){
+  const map={mc:'Тест сұрақтары',tf:'Дұрыс / Қате',match:'Сәйкестендіру',code:'SQL жазу',fill:'Бос орынды толтыру'};
+  return map[q.type]||'SQL';
+}
+
+function answerCorrectValue(q){
+  if(q.type==='mc')return q.opts[q.ans]||'';
+  if(q.type==='tf')return q.ans?'true':'false';
+  if(q.type==='fill')return q.ans?.[0]||'';
+  if(q.type==='match')return q.pairs.map(p=>`${p.left} -> ${p.right}`).join('; ');
+  if(q.type==='code')return q.solution||'';
+  return '';
+}
+
+function answerSelectedValue(q,answer){
+  if(!answer)return '';
+  if(q.type==='mc')return q.opts[answer.val]||'';
+  if(q.type==='tf')return answer.val?'true':'false';
+  if(q.type==='fill')return answer.val||'';
+  if(q.type==='match')return 'checked';
+  if(q.type==='code')return 'submitted';
+  return '';
+}
+
+function buildAnswerLog(){
+  return QUESTIONS.map((q,i)=>{
+    const answer=answers[i];
+    return {
+      question_id:`${QUIZ_KEY}-q${i+1}`,
+      topic_index:0,
+      topic_name:questionTopicName(q),
+      difficulty:questionDifficulty(q),
+      question_type:q.type,
+      is_correct:!!(answer&&answer.locked&&answer.correct),
+      selected_answer:answerSelectedValue(q,answer),
+      correct_answer:answerCorrectValue(q),
+      time_spent_ms:0
+    };
+  });
+}
+
+async function saveAttempt(){
+  if(attemptSaved)return;
+  attemptSaved=true;
+  setSaveStatus('Нәтиже сақталуда...');
+  const payload={
+    quiz_key:QUIZ_KEY,
+    quiz_title:QUIZ_TITLE,
+    student_name:studentName||'Оқушы',
+    student_group:'',
+    difficulty_filter:'all',
+    started_at:(attemptStartedAt||new Date()).toISOString(),
+    finished_at:new Date().toISOString(),
+    answers:buildAnswerLog()
+  };
+  try{
+    const saved=await apiJSON('/api/quiz/attempts',{
+      method:'POST',
+      body:JSON.stringify(payload)
+    });
+    setSaveStatus(`Нәтиже сақталды: ${saved.student_name} · ${saved.score_percent.toFixed(1)}%`,'ok');
+  }catch(error){
+    attemptSaved=false;
+    setSaveStatus(error.message||'Нәтиже сақталмады.','error');
+  }
+}
+
+function buildAll(){
+  const main=document.getElementById('main');
+  main.innerHTML='';
+  QUESTIONS.forEach((q,i)=>{
+    const div=document.createElement('div');
+    div.className='q-card';
+    div.id='qc-'+i;
+    div.innerHTML=buildCard(q,i);
+    main.appendChild(div);
+  });
+}
+
+function buildCard(q,i){
+  const typeLabels={mc:'Бірін таңда',tf:'Дұрыс / Қате',match:'Сәйкестір',code:'Код жаз',fill:'Бос толтыр'};
+  const typeBadges={mc:'badge-mc',tf:'badge-tf',match:'badge-match',code:'badge-code',fill:'badge-fill'};
+  let html=`<div class="q-num">Сұрақ ${i+1} / ${QUESTIONS.length}</div>
+  <span class="q-type-badge ${typeBadges[q.type]}">${typeLabels[q.type]}</span>
+  <div class="q-text">${q.q}</div>`;
+
+  if(q.code&&q.type!=='code'){
+    html+=`<div class="q-code">${q.code}</div>`;
+  }
+  if(q.hint&&q.type==='fill'){
+    html+=`<div class="q-sub">💡 Кеңес: ${q.hint}</div>`;
+  }
+
+  if(q.type==='mc'){
+    html+='<div class="mc-options">';
+    q.opts.forEach((opt,j)=>{
+      html+=`<button class="mc-opt" id="opt-${i}-${j}" onclick="pickMC(${i},${j})">
+        <span class="opt-key">${String.fromCharCode(65+j)}</span>
+        <span>${opt}</span></button>`;
+    });
+    html+='</div>';
+  }
+
+  else if(q.type==='tf'){
+    html+=`<div class="tf-row">
+      <button class="tf-btn" id="tf-${i}-true" onclick="pickTF(${i},true)">✅ Дұрыс</button>
+      <button class="tf-btn" id="tf-${i}-false" onclick="pickTF(${i},false)">❌ Қате</button>
+    </div>`;
+  }
+
+  else if(q.type==='match'){
+    const allRights=[...q.pairs.map(p=>p.right)].sort(()=>Math.random()-0.5);
+    html+='<div class="match-area">';
+    q.pairs.forEach((p,j)=>{
+      html+=`<div class="match-row">
+        <div class="match-left">${p.left}</div>
+        <span class="match-arrow">→</span>
+        <select class="match-select" id="match-${i}-${j}">
+          <option value="">— таңда —</option>
+          ${allRights.map(r=>`<option value="${r}">${r}</option>`).join('')}
+        </select>
+      </div>`;
+    });
+    html+=`</div><button class="match-check-btn" onclick="checkMatch(${i})" id="match-btn-${i}">Тексеру ✓</button>`;
+  }
+
+  else if(q.type==='fill'){
+    html+=`<div class="fill-wrap">
+      <input class="fill-input" id="fill-${i}" placeholder="Жауабыңызды жазыңыз..." autocomplete="off" autocapitalize="off" spellcheck="false" onkeydown="if(event.key==='Enter')checkFill(${i})">
+      <button class="match-check-btn" onclick="checkFill(${i})" id="fill-btn-${i}">Тексеру ✓</button>
+    </div>`;
+  }
+
+  else if(q.type==='code'){
+    html+=`<div class="q-sub">💡 Кеңес: ${q.hint}</div>
+    <div class="code-editor">
+      <textarea class="code-textarea" id="code-${i}" placeholder="SQL сұранысыңызды осында жазыңыз..." rows="3" spellcheck="false" autocapitalize="off"></textarea>
+    </div>
+    <button class="code-run-btn" onclick="runCode(${i})">▶ Орындау және тексеру</button>
+    <div class="code-result" id="code-result-${i}">
+      <div class="result-label">Нәтиже</div>
+      <p class="result-msg">Жоғарыда SQL жазып, орындаңыз</p>
+    </div>`;
+  }
+
+  html+=`<div class="feedback" id="fb-${i}"></div>`;
+  return html;
+}
+
+// ===================== ANSWER HANDLERS =====================
+function pickMC(qi,oi){
+  if(answers[qi]!==undefined&&answers[qi].locked)return;
+  const q=QUESTIONS[qi];
+  document.querySelectorAll(`[id^="opt-${qi}-"]`).forEach(b=>b.classList.remove('selected'));
+  document.getElementById(`opt-${qi}-${oi}`).classList.add('selected');
+  answers[qi]={val:oi,locked:false};
+
+  // auto-check after short delay
+  setTimeout(()=>{
+    const isCorrect=oi===q.ans;
+    document.querySelectorAll(`[id^="opt-${qi}-"]`).forEach((b,j)=>{
+      b.classList.add('disabled');
+      if(j===q.ans)b.classList.add('correct');
+      else if(j===oi&&!isCorrect)b.classList.add('wrong');
+    });
+    answers[qi]={val:oi,correct:isCorrect,locked:true};
+    showFeedback(qi,isCorrect,q.exp);
+    updateScore();
+  },300);
+}
+
+function pickTF(qi,val){
+  if(answers[qi]!==undefined&&answers[qi].locked)return;
+  const q=QUESTIONS[qi];
+  const isCorrect=val===q.ans;
+  document.getElementById(`tf-${qi}-true`).classList.add('disabled');
+  document.getElementById(`tf-${qi}-false`).classList.add('disabled');
+  document.getElementById(`tf-${qi}-${val}`).classList.add('selected');
+  setTimeout(()=>{
+    document.getElementById(`tf-${qi}-${q.ans}`).classList.add('correct');
+    if(!isCorrect)document.getElementById(`tf-${qi}-${val}`).classList.add('wrong');
+    answers[qi]={val,correct:isCorrect,locked:true};
+    showFeedback(qi,isCorrect,q.exp);
+    updateScore();
+  },300);
+}
+
+function checkMatch(qi){
+  const q=QUESTIONS[qi];
+  let allCorrect=true;
+  const selected=[];
+  q.pairs.forEach((p,j)=>{
+    const sel=document.getElementById(`match-${qi}-${j}`);
+    const val=sel.value;
+    selected.push(val);
+    const correct=val===p.right;
+    if(!correct)allCorrect=false;
+    sel.classList.add(correct?'correct':'wrong');
+    sel.disabled=true;
+  });
+  const btn=document.getElementById(`match-btn-${qi}`);
+  if(btn)btn.style.display='none';
+  answers[qi]={correct:allCorrect,locked:true};
+  showFeedback(qi,allCorrect,q.exp+(allCorrect?'':'\nДұрыс: '+q.pairs.map(p=>p.left+' → '+p.right).join(', ')));
+  updateScore();
+}
+
+function checkFill(qi){
+  const q=QUESTIONS[qi];
+  if(answers[qi]&&answers[qi].locked)return;
+  const inp=document.getElementById(`fill-${qi}`);
+  const val=inp.value.trim().toUpperCase();
+  const isCorrect=q.ans.map(a=>a.toUpperCase()).includes(val);
+  inp.classList.add(isCorrect?'correct':'wrong');
+  inp.readOnly=true;
+  const btn=document.getElementById(`fill-btn-${qi}`);
+  if(btn)btn.style.display='none';
+  answers[qi]={val,correct:isCorrect,locked:true};
+  showFeedback(qi,isCorrect,q.exp+(isCorrect?'':' Дұрыс жауап: '+q.ans[0]));
+  updateScore();
+}
+
+function runCode(qi){
+  const q=QUESTIONS[qi];
+  const textarea=document.getElementById(`code-${qi}`);
+  const resultDiv=document.getElementById(`code-result-${qi}`);
+  const query=textarea.value.trim();
+  if(!query){resultDiv.innerHTML='<div class="result-label">Нәтиже</div><p class="result-msg error">SQL жазыңыз!</p>';return;}
+
+  const db=JSON.parse(JSON.stringify(DB));
+  const sqlResult=runSQL(query,db);
+
+  let html='<div class="result-label">Нәтиже</div>';
+  if(sqlResult.error){
+    html+=`<p class="result-msg error">❌ ${sqlResult.error}</p>`;
+    resultDiv.innerHTML=html;
+    return;
+  }
+  if(sqlResult.type==='select'){
+    html+=renderTable(sqlResult.rows);
+  }else if(sqlResult.type==='delete'){
+    html+=`<p class="result-msg success" style="margin-bottom:8px">✅ ${sqlResult.deleted.length} жол жойылды</p>`;
+    html+=renderTable(sqlResult.after);
+  }else if(sqlResult.type==='update'){
+    html+=`<p class="result-msg success" style="margin-bottom:8px">✅ ${sqlResult.updated.length} жол жаңартылды</p>`;
+    html+=renderTable(sqlResult.after);
+  }
+  resultDiv.innerHTML=html;
+
+  // Check correctness
+  const check=q.check(sqlResult,db);
+  if(!(answers[qi]&&answers[qi].locked)){
+    answers[qi]={correct:check.ok,locked:true};
+    updateScore();
+  }
+  const fb=document.getElementById(`fb-${qi}`);
+  fb.className='feedback show '+(check.ok?'correct':'wrong');
+  fb.innerHTML=(check.ok?'✅ ':'❌ ')+check.msg+(check.ok?'':('<br><span style="font-size:12px;opacity:0.8">Үлгі жауап: <code style="font-family:JetBrains Mono,monospace">'+q.solution+'</code></span>'));
+}
+
+function showFeedback(qi,correct,exp){
+  const fb=document.getElementById(`fb-${qi}`);
+  fb.className='feedback show '+(correct?'correct':'wrong');
+  fb.innerHTML=(correct?'✅ Дұрыс! ':'❌ Қате. ')+exp;
+}
+
+// ===================== NAVIGATION =====================
+function goTo(i){
+  document.querySelectorAll('.q-card').forEach(c=>c.classList.remove('active'));
+  document.getElementById('qc-'+i).classList.add('active');
+  current=i;
+  document.getElementById('prev-btn').disabled=i===0;
+  document.getElementById('next-btn').disabled=i===QUESTIONS.length-1;
+
+  const pct=((i+1)/QUESTIONS.length*100).toFixed(0);
+  document.getElementById('progress-fill').style.width=pct+'%';
+
+  const ans=answers[i];
+  document.getElementById('next-btn').textContent=
+    i===QUESTIONS.length-1?'Аяқтау ✓':'Алға →';
+  window.scrollTo(0,0);
+  updateScore();
+}
+
+function goSlide(dir){
+  const ni=current+dir;
+  if(ni<0)return;
+  if(ni>=QUESTIONS.length){showResult();return;}
+  goTo(ni);
+}
+
+function updateScore(){
+  const answered=Object.values(answers).filter(a=>a.locked);
+  const correct=answered.filter(a=>a.correct).length;
+  document.getElementById('score-badge').textContent=`${correct} / ${answered.length}`;
+}
+
+// ===================== RESULT =====================
+function showResult(){
+  document.getElementById('quiz-area').style.display='none';
+  const rs=document.getElementById('result-screen');
+  rs.style.display='block';
+
+  const total=QUESTIONS.length;
+  const answered=Object.values(answers).filter(a=>a.locked);
+  const correct=answered.filter(a=>a.correct).length;
+  const wrong=answered.filter(a=>!a.correct).length;
+  const skip=total-answered.length;
+  const pct=Math.round(correct/total*100);
+
+  document.getElementById('result-pct').textContent=pct+'%';
+  document.getElementById('rb-correct').textContent=correct;
+  document.getElementById('rb-wrong').textContent=wrong;
+  document.getElementById('rb-skip').textContent=skip;
+  document.getElementById('rb-total').textContent=total;
+
+  let emoji,msg,sub;
+  if(pct>=90){emoji='🏆';msg='Тамаша, '+studentName+'!';sub='Сен SQL маманысың! Керемет нәтиже.';}
+  else if(pct>=75){emoji='🌟';msg='Өте жақсы!';sub='Тамаша нәтиже, аздап қайталасаң — маман боласың.';}
+  else if(pct>=60){emoji='👍';msg='Жақсы!';sub='Негіздерді білесің, жаттықсаң одан да жақсы болады.';}
+  else if(pct>=40){emoji='📚';msg='Жалғастыр!';sub='SQL-ды тағы бір рет қайталап, қайта тапсыр.';}
+  else{emoji='💪';msg='Тырыс!';sub='Сабаққа қайт, материалды қайталап, тағы бір мәрте тапсыр!';}
+
+  document.getElementById('result-emoji').textContent=emoji;
+  document.getElementById('result-msg').textContent=msg;
+  document.getElementById('result-sub').textContent=sub;
+  saveAttempt();
+  window.scrollTo(0,0);
+}
+
+function restartQuiz(){
+  answers={};
+  current=0;
+  attemptStartedAt=new Date();
+  attemptSaved=false;
+  setSaveStatus('');
+  document.getElementById('result-screen').style.display='none';
+  document.getElementById('quiz-area').style.display='block';
+  buildAll();
+  goTo(0);
+  updateScore();
+}
+</script>
+</body>
+</html>

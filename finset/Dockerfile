@@ -21,6 +21,7 @@ WORKDIR /app
 
 COPY --from=builder /finset /app/finset
 COPY --from=builder /app/quiz.html /app/quiz.html
+COPY --from=builder /app/sql_quiz.html /app/sql_quiz.html
 
 ENV FRONTEND_HTML_PATH=/app/quiz.html
 
