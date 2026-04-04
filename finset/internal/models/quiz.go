@@ -70,7 +70,7 @@ func (r SubmitQuizAttemptRequest) Validate() string {
 	if r.StudentName == "" {
 		return "student_name is required"
 	}
-	if len(r.Answers) == 0 {
+	if len(r.Answers) == 0 && r.TotalQuestions <= 0 {
 		return "at least one answer is required"
 	}
 	if r.TotalQuestions > 0 && r.TotalQuestions < len(r.Answers) {

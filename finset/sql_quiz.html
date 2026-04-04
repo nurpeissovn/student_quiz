@@ -937,10 +937,18 @@ function buildCard(q,i){
   return html;
 }
 
+function setNavigationLock(locked){
+  const prevBtn=document.getElementById('prev-btn');
+  const nextBtn=document.getElementById('next-btn');
+  if(prevBtn)prevBtn.disabled=locked||current===0;
+  if(nextBtn)nextBtn.disabled=locked||current===QUESTIONS.length-1;
+}
+
 // ===================== ANSWER HANDLERS =====================
 function pickMC(qi,oi){
   if(answers[qi]!==undefined&&answers[qi].locked)return;
   const q=QUESTIONS[qi];
+  setNavigationLock(true);
   document.querySelectorAll(`[id^="opt-${qi}-"]`).forEach(b=>b.classList.remove('selected'));
   document.getElementById(`opt-${qi}-${oi}`).classList.add('selected');
   answers[qi]={val:oi,locked:false};
@@ -956,6 +964,7 @@ function pickMC(qi,oi){
     answers[qi]={val:oi,correct:isCorrect,locked:true};
     showFeedback(qi,isCorrect,q.exp);
     updateScore();
+    setNavigationLock(false);
   },300);
 }
 
@@ -963,6 +972,7 @@ function pickTF(qi,val){
   if(answers[qi]!==undefined&&answers[qi].locked)return;
   const q=QUESTIONS[qi];
   const isCorrect=val===q.ans;
+  setNavigationLock(true);
   document.getElementById(`tf-${qi}-true`).classList.add('disabled');
   document.getElementById(`tf-${qi}-false`).classList.add('disabled');
   document.getElementById(`tf-${qi}-${val}`).classList.add('selected');
@@ -972,6 +982,7 @@ function pickTF(qi,val){
     answers[qi]={val,correct:isCorrect,locked:true};
     showFeedback(qi,isCorrect,q.exp);
     updateScore();
+    setNavigationLock(false);
   },300);
 }
 
@@ -1059,8 +1070,7 @@ function goTo(i){
   document.querySelectorAll('.q-card').forEach(c=>c.classList.remove('active'));
   document.getElementById('qc-'+i).classList.add('active');
   current=i;
-  document.getElementById('prev-btn').disabled=i===0;
-  document.getElementById('next-btn').disabled=i===QUESTIONS.length-1;
+  setNavigationLock(false);
 
   const pct=((i+1)/QUESTIONS.length*100).toFixed(0);
   document.getElementById('progress-fill').style.width=pct+'%';
