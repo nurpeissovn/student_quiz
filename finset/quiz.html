@@ -1974,6 +1974,10 @@ function difficultyLabel(key) {
   }[key] || key;
 }
 
+function normalizeStudentKey(value) {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
 function readStudentForm() {
   return {
     name: document.getElementById('studentName').value.trim(),
@@ -2045,6 +2049,339 @@ async function flushPendingAttempts() {
   }
   savePendingAttempts(remaining);
   return sent;
+}
+
+function summarizeAttempt(payload, index = 0) {
+  const answers = Array.isArray(payload.answers) ? payload.answers : [];
+  const totalQuestions = Number(payload.total_questions) > 0 ? Number(payload.total_questions) : answers.length;
+  const correctCount = answers.reduce((sum, answer) => sum + (answer && answer.is_correct ? 1 : 0), 0);
+  const wrongCount = Math.max(0, totalQuestions - correctCount);
+  const scorePercent = totalQuestions > 0 ? (correctCount * 100) / totalQuestions : 0;
+  const score = answers.reduce((sum, answer) => {
+    if (!answer || !answer.is_correct) return sum;
+    return sum + (answer.difficulty === 'hard' ? 20 : answer.difficulty === 'medium' ? 15 : 10);
+  }, 0);
+
+  return {
+    attempt_id: payload.attempt_id || `local-attempt-${index}`,
+    student_id: payload.student_id || `local-student-${normalizeStudentKey(payload.student_name)}::${normalizeStudentKey(payload.student_group)}`,
+    quiz_key: payload.quiz_key || QUIZ_KEY,
+    quiz_title: payload.quiz_title || QUIZ_TITLE,
+    student_name: payload.student_name || 'Оқушы',
+    student_group: payload.student_group || '',
+    difficulty_filter: payload.difficulty_filter || 'all',
+    total_questions: totalQuestions,
+    correct_count: correctCount,
+    wrong_count: wrongCount,
+    score,
+    score_percent: scorePercent,
+    duration_ms: Math.max(0, new Date(payload.finished_at || Date.now()) - new Date(payload.started_at || Date.now())),
+    finished_at: payload.finished_at || new Date().toISOString(),
+    answers
+  };
+}
+
+function buildPendingDashboard(items) {
+  const attempts = (items || []).map((item, index) => summarizeAttempt(item, index));
+  const dashboard = {
+    overview: {
+      student_count: 0,
+      attempt_count: attempts.length,
+      answer_count: 0,
+      average_score: 0,
+      average_accuracy: 0
+    },
+    difficulties: [],
+    topics: [],
+    students: [],
+    recent_attempts: [],
+    question_misses: []
+  };
+
+  if (!attempts.length) return dashboard;
+
+  const difficultyMap = new Map();
+  const topicMap = new Map();
+  const studentMap = new Map();
+  const questionMap = new Map();
+
+  let answerCount = 0;
+  let totalScorePercent = 0;
+
+  attempts.forEach(attempt => {
+    totalScorePercent += attempt.score_percent;
+    answerCount += attempt.answers.length;
+    dashboard.recent_attempts.push({
+      attempt_id: attempt.attempt_id,
+      student_id: attempt.student_id,
+      quiz_key: attempt.quiz_key,
+      quiz_title: attempt.quiz_title,
+      student_name: attempt.student_name,
+      student_group: attempt.student_group,
+      difficulty_filter: attempt.difficulty_filter,
+      score_percent: attempt.score_percent,
+      correct_count: attempt.correct_count,
+      total_questions: attempt.total_questions,
+      finished_at: attempt.finished_at
+    });
+
+    const studentKey = `${normalizeStudentKey(attempt.student_name)}::${normalizeStudentKey(attempt.student_group)}`;
+    let student = studentMap.get(studentKey);
+    if (!student) {
+      student = {
+        student_id: attempt.student_id,
+        student_name: attempt.student_name,
+        student_group: attempt.student_group,
+        attempts: 0,
+        best_score: 0,
+        average_accuracy: 0,
+        last_finished_at: attempt.finished_at,
+        difficulties: [],
+        _score_total: 0,
+        _difficulty_map: new Map()
+      };
+      studentMap.set(studentKey, student);
+    }
+    student.attempts += 1;
+    student.best_score = Math.max(student.best_score, attempt.score_percent);
+    student._score_total += attempt.score_percent;
+    if (new Date(attempt.finished_at) > new Date(student.last_finished_at)) {
+      student.last_finished_at = attempt.finished_at;
+    }
+
+    attempt.answers.forEach(answer => {
+      const difficultyKey = answer.difficulty || 'easy';
+      const difficultyStat = difficultyMap.get(difficultyKey) || {
+        difficulty: difficultyKey,
+        answers: 0,
+        correct: 0,
+        attempts: new Set()
+      };
+      difficultyStat.answers += 1;
+      difficultyStat.correct += answer.is_correct ? 1 : 0;
+      difficultyStat.attempts.add(attempt.attempt_id);
+      difficultyMap.set(difficultyKey, difficultyStat);
+
+      const topicKey = `${answer.topic_index || 0}::${answer.topic_name || ''}`;
+      const topicStat = topicMap.get(topicKey) || {
+        topic_index: answer.topic_index || 0,
+        topic_name: answer.topic_name || '',
+        answers: 0,
+        correct: 0
+      };
+      topicStat.answers += 1;
+      topicStat.correct += answer.is_correct ? 1 : 0;
+      topicMap.set(topicKey, topicStat);
+
+      const studentDiff = student._difficulty_map.get(difficultyKey) || {
+        difficulty: difficultyKey,
+        answers: 0,
+        correct: 0
+      };
+      studentDiff.answers += 1;
+      studentDiff.correct += answer.is_correct ? 1 : 0;
+      student._difficulty_map.set(difficultyKey, studentDiff);
+
+      const questionKey = `${answer.question_id}::${answer.topic_name || ''}::${difficultyKey}`;
+      const questionStat = questionMap.get(questionKey) || {
+        question_id: answer.question_id,
+        topic_name: answer.topic_name || '',
+        difficulty: difficultyKey,
+        attempts: 0,
+        correct: 0
+      };
+      questionStat.attempts += 1;
+      questionStat.correct += answer.is_correct ? 1 : 0;
+      questionMap.set(questionKey, questionStat);
+    });
+  });
+
+  dashboard.overview.student_count = studentMap.size;
+  dashboard.overview.answer_count = answerCount;
+  dashboard.overview.average_score = totalScorePercent / attempts.length;
+  dashboard.overview.average_accuracy = dashboard.overview.average_score;
+
+  dashboard.difficulties = Array.from(difficultyMap.values())
+    .map(row => ({
+      difficulty: row.difficulty,
+      answers: row.answers,
+      correct: row.correct,
+      accuracy: row.answers > 0 ? (row.correct * 100) / row.answers : 0,
+      attempts: row.attempts.size
+    }))
+    .sort((a, b) => ['easy', 'medium', 'hard'].indexOf(a.difficulty) - ['easy', 'medium', 'hard'].indexOf(b.difficulty));
+
+  dashboard.topics = Array.from(topicMap.values())
+    .map(row => ({
+      topic_index: row.topic_index,
+      topic_name: row.topic_name,
+      answers: row.answers,
+      correct: row.correct,
+      accuracy: row.answers > 0 ? (row.correct * 100) / row.answers : 0
+    }))
+    .sort((a, b) => a.topic_index - b.topic_index);
+
+  dashboard.students = Array.from(studentMap.values())
+    .map(student => ({
+      student_id: student.student_id,
+      student_name: student.student_name,
+      student_group: student.student_group,
+      attempts: student.attempts,
+      best_score: student.best_score,
+      average_accuracy: student.attempts > 0 ? student._score_total / student.attempts : 0,
+      last_finished_at: student.last_finished_at,
+      difficulties: Array.from(student._difficulty_map.values()).map(diff => ({
+        difficulty: diff.difficulty,
+        answers: diff.answers,
+        correct: diff.correct,
+        accuracy: diff.answers > 0 ? (diff.correct * 100) / diff.answers : 0
+      }))
+    }))
+    .sort((a, b) => b.best_score - a.best_score || b.average_accuracy - a.average_accuracy || a.student_name.localeCompare(b.student_name));
+
+  dashboard.recent_attempts.sort((a, b) => new Date(b.finished_at) - new Date(a.finished_at));
+
+  dashboard.question_misses = Array.from(questionMap.values())
+    .map(row => ({
+      question_id: row.question_id,
+      topic_name: row.topic_name,
+      difficulty: row.difficulty,
+      attempts: row.attempts,
+      correct: row.correct,
+      accuracy: row.attempts > 0 ? (row.correct * 100) / row.attempts : 0
+    }))
+    .sort((a, b) => a.accuracy - b.accuracy || b.attempts - a.attempts || a.question_id.localeCompare(b.question_id))
+    .slice(0, 12);
+
+  return dashboard;
+}
+
+function mergeDashboardData(remoteData, localData) {
+  if (!remoteData) return localData;
+  if (!localData || !localData.overview || localData.overview.attempt_count === 0) return remoteData;
+
+  const merged = {
+    overview: {
+      student_count: 0,
+      attempt_count: (remoteData.overview?.attempt_count || 0) + (localData.overview?.attempt_count || 0),
+      answer_count: (remoteData.overview?.answer_count || 0) + (localData.overview?.answer_count || 0),
+      average_score: 0,
+      average_accuracy: 0
+    },
+    difficulties: [],
+    topics: [],
+    students: [],
+    recent_attempts: [],
+    question_misses: []
+  };
+
+  const remoteAttempts = remoteData.overview?.attempt_count || 0;
+  const localAttempts = localData.overview?.attempt_count || 0;
+  const totalAttempts = remoteAttempts + localAttempts;
+  if (totalAttempts > 0) {
+    merged.overview.average_score = (((remoteData.overview?.average_score || 0) * remoteAttempts) + ((localData.overview?.average_score || 0) * localAttempts)) / totalAttempts;
+    merged.overview.average_accuracy = (((remoteData.overview?.average_accuracy || 0) * remoteAttempts) + ((localData.overview?.average_accuracy || 0) * localAttempts)) / totalAttempts;
+  }
+
+  const difficultyMap = new Map();
+  [...(remoteData.difficulties || []), ...(localData.difficulties || [])].forEach(row => {
+    const key = row.difficulty || 'easy';
+    const entry = difficultyMap.get(key) || { difficulty: key, answers: 0, correct: 0, attempts: 0 };
+    entry.answers += row.answers || 0;
+    entry.correct += row.correct || 0;
+    entry.attempts += row.attempts || 0;
+    difficultyMap.set(key, entry);
+  });
+  merged.difficulties = Array.from(difficultyMap.values())
+    .map(row => ({ ...row, accuracy: row.answers > 0 ? (row.correct * 100) / row.answers : 0 }))
+    .sort((a, b) => ['easy', 'medium', 'hard'].indexOf(a.difficulty) - ['easy', 'medium', 'hard'].indexOf(b.difficulty));
+
+  const topicMap = new Map();
+  [...(remoteData.topics || []), ...(localData.topics || [])].forEach(row => {
+    const key = `${row.topic_index || 0}::${row.topic_name || ''}`;
+    const entry = topicMap.get(key) || { topic_index: row.topic_index || 0, topic_name: row.topic_name || '', answers: 0, correct: 0 };
+    entry.answers += row.answers || 0;
+    entry.correct += row.correct || 0;
+    topicMap.set(key, entry);
+  });
+  merged.topics = Array.from(topicMap.values())
+    .map(row => ({ ...row, accuracy: row.answers > 0 ? (row.correct * 100) / row.answers : 0 }))
+    .sort((a, b) => a.topic_index - b.topic_index);
+
+  const studentMap = new Map();
+  [...(remoteData.students || []), ...(localData.students || [])].forEach(student => {
+    const key = `${normalizeStudentKey(student.student_name)}::${normalizeStudentKey(student.student_group)}`;
+    let entry = studentMap.get(key);
+    if (!entry) {
+      entry = {
+        student_id: student.student_id,
+        student_name: student.student_name,
+        student_group: student.student_group,
+        attempts: 0,
+        best_score: 0,
+        average_accuracy: 0,
+        last_finished_at: student.last_finished_at,
+        difficulties: [],
+        _weighted_accuracy: 0,
+        _difficulty_map: new Map()
+      };
+      studentMap.set(key, entry);
+    }
+    entry.attempts += student.attempts || 0;
+    entry.best_score = Math.max(entry.best_score, student.best_score || 0);
+    entry._weighted_accuracy += (student.average_accuracy || 0) * (student.attempts || 0);
+    if (!entry.last_finished_at || new Date(student.last_finished_at) > new Date(entry.last_finished_at)) {
+      entry.last_finished_at = student.last_finished_at;
+    }
+    (student.difficulties || []).forEach(diff => {
+      const diffEntry = entry._difficulty_map.get(diff.difficulty) || { difficulty: diff.difficulty, answers: 0, correct: 0 };
+      diffEntry.answers += diff.answers || 0;
+      diffEntry.correct += diff.correct || 0;
+      entry._difficulty_map.set(diff.difficulty, diffEntry);
+    });
+  });
+  merged.students = Array.from(studentMap.values()).map(student => ({
+    student_id: student.student_id,
+    student_name: student.student_name,
+    student_group: student.student_group,
+    attempts: student.attempts,
+    best_score: student.best_score,
+    average_accuracy: student.attempts > 0 ? student._weighted_accuracy / student.attempts : 0,
+    last_finished_at: student.last_finished_at,
+    difficulties: Array.from(student._difficulty_map.values()).map(diff => ({
+      difficulty: diff.difficulty,
+      answers: diff.answers,
+      correct: diff.correct,
+      accuracy: diff.answers > 0 ? (diff.correct * 100) / diff.answers : 0
+    }))
+  })).sort((a, b) => b.best_score - a.best_score || b.average_accuracy - a.average_accuracy || a.student_name.localeCompare(b.student_name));
+
+  merged.overview.student_count = merged.students.length;
+
+  merged.recent_attempts = [...(remoteData.recent_attempts || []), ...(localData.recent_attempts || [])]
+    .sort((a, b) => new Date(b.finished_at) - new Date(a.finished_at))
+    .slice(0, 25);
+
+  const questionMap = new Map();
+  [...(remoteData.question_misses || []), ...(localData.question_misses || [])].forEach(row => {
+    const key = `${row.question_id}::${row.topic_name || ''}::${row.difficulty || 'easy'}`;
+    const entry = questionMap.get(key) || {
+      question_id: row.question_id,
+      topic_name: row.topic_name || '',
+      difficulty: row.difficulty || 'easy',
+      attempts: 0,
+      correct: 0
+    };
+    entry.attempts += row.attempts || 0;
+    entry.correct += row.correct || 0;
+    questionMap.set(key, entry);
+  });
+  merged.question_misses = Array.from(questionMap.values())
+    .map(row => ({ ...row, accuracy: row.attempts > 0 ? (row.correct * 100) / row.attempts : 0 }))
+    .sort((a, b) => a.accuracy - b.accuracy || b.attempts - a.attempts || a.question_id.localeCompare(b.question_id))
+    .slice(0, 12);
+
+  return merged;
 }
 
 // ═══════════════════════════════════════════════════
@@ -2442,6 +2779,7 @@ async function saveAttempt() {
     student_name: currentStudent.name,
     student_group: currentStudent.group,
     difficulty_filter: selectedFilter,
+    total_questions: questions.length,
     started_at: attemptStartedAt ? attemptStartedAt.toISOString() : new Date().toISOString(),
     finished_at: new Date().toISOString(),
     answers: answerLog
@@ -2573,11 +2911,18 @@ async function loadDashboard() {
   showScreen('dashboardScreen');
   document.getElementById('difficultyAnalytics').innerHTML = `<div class="dashboard-empty">Жүктелуде...</div>`;
   document.getElementById('topicAnalytics').innerHTML = `<div class="dashboard-empty">Жүктелуде...</div>`;
+  let pendingDashboard = buildPendingDashboard(loadPendingAttempts());
   try {
     await flushPendingAttempts();
+    pendingDashboard = buildPendingDashboard(loadPendingAttempts());
     const data = await apiJSON('/api/quiz/dashboard');
-    renderDashboard(data);
+    renderDashboard(mergeDashboardData(data, pendingDashboard));
   } catch (error) {
+    if (pendingDashboard.overview.attempt_count > 0) {
+      renderDashboard(pendingDashboard);
+      setSaveStatus('Серверге қосылу сәтсіз. Панельде тек осы құрылғыда сақталған нәтижелер көрсетілді.', 'error');
+      return;
+    }
     document.getElementById('difficultyAnalytics').innerHTML = `<div class="dashboard-empty">${escapeHTML(error.message)}</div>`;
     document.getElementById('topicAnalytics').innerHTML = `<div class="dashboard-empty">Панель жүктелмеді.</div>`;
   }
