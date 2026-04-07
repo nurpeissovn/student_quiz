@@ -160,7 +160,7 @@ body::before{
 #prev-btn:disabled,#next-btn:disabled{opacity:0.3;pointer-events:none}
 
 /* RESULT SCREEN */
-#result-screen{display:none;min-height:100vh;padding:40px 20px;text-align:center;align-items:center;justify-content:center;position:relative;z-index:1}
+#result-screen{display:none;min-height:100vh;padding:40px 20px;text-align:center;align-items:center;justify-content:center;position:relative;z-index:1;flex-direction:column}
 .results-card{background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:28px;padding:42px 34px;max-width:640px;width:100%;position:relative;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,0.35)}
 .results-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--green))}
 .result-circle{width:auto;height:auto;border-radius:0;background:none;
@@ -1099,7 +1099,7 @@ function updateScore(){
 async function showResult(){
   document.getElementById('quiz-area').style.display='none';
   const rs=document.getElementById('result-screen');
-  rs.style.display='block';
+  rs.style.display='flex';
 
   const total=QUESTIONS.length;
   const answered=Object.values(answers).filter(a=>a.locked);

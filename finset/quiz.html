@@ -2503,10 +2503,15 @@ function renderDashboard(data) {
       studentsTable.innerHTML = `<tr><td colspan="6" class="dashboard-empty">Әзірге оқушы нәтижесі жоқ.</td></tr>`;
     } else {
       studentsTable.innerHTML = data.students.map(student => {
-        const pills = (student.difficulties || []).map(diff => {
-          const total = QUESTION_COUNTS[diff.difficulty] || 0;
-          return `<span class="difficulty-pill ${diff.difficulty}">${difficultyLabel(diff.difficulty)} ${diff.correct}/${Math.max(total, diff.answers)}</span>`;
-        }).join('');
+        const diffs = student.difficulties || [];
+        const pills = diffs.length > 0
+          ? diffs.map(diff =>
+              `<span class="difficulty-pill ${diff.difficulty}">${difficultyLabel(diff.difficulty)} ${diff.correct}/${diff.answers}</span>`
+            ).join('')
+          : ['easy','medium','hard'].map(d => {
+              const dc = (student.answer_count_by_difficulty || {})[d];
+              return dc ? `<span class="difficulty-pill ${d}">${difficultyLabel(d)} ${dc.correct||0}/${dc.total||0}</span>` : '';
+            }).join('');
         return `
           <tr>
             <td>
